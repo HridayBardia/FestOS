@@ -158,6 +158,33 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Branch 3: Contingent Bulk Issuance
+    if (actionType === 'bulk_issue') {
+      const { contingentId, college } = body;
+      if (!contingentId) {
+        return NextResponse.json({ success: false, error: 'contingentId is required' }, { status: 400 });
+      }
+
+      await logAudit({
+        actorId: actor,
+        actorRole: role,
+        action: 'contingent_bulk_merch_issue',
+        entityType: 'contingents',
+        entityId: contingentId,
+        reason: `Bulk kit & badge issuance authorized for contingent ${contingentId} (${college || 'Affiliated College'})`,
+        beforeState: null,
+        afterState: { contingent_id: contingentId, college, status: 'fully_issued' }
+      });
+
+      await broadcastInvalidation('merch', 'contingent_bulk_pickup');
+
+      return NextResponse.json({
+        success: true,
+        contingentId,
+        message: `Bulk kit pickup processed for contingent ${contingentId}`
+      });
+    }
+
     return NextResponse.json({ success: false, error: 'Unsupported actionType' }, { status: 400 });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

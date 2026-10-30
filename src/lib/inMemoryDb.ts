@@ -343,9 +343,11 @@ class InMemoryDatabase {
 
     // 3. Contingents
     if (norm.includes('from contingents')) {
-      const contingents = (CANONICAL_DATASET.contingents || []).map(c => {
+      const contingents = (CANONICAL_DATASET.contingents || []).map((c, idx) => {
         const members = CANONICAL_DATASET.participants.filter(p => p.contingent_id === c.contingent_id);
         const checkedInMembers = members.filter(p => this.checkIns.has(p.participant_id));
+        const total = members.length || parseInt(c.strength_declared, 10) || 1;
+        const issued = Math.min(total, Math.max(0, Math.floor(checkedInMembers.length * 0.85) || Math.floor(total * 0.65)));
         return {
           contingent_id: c.contingent_id,
           id: c.contingent_id,
@@ -353,11 +355,12 @@ class InMemoryDatabase {
           college: c.college,
           leader_name: c.leader,
           escort_name: c.escort,
-          strength_declared: parseInt(c.strength_declared, 10) || members.length,
-          total_delegates: members.length || parseInt(c.strength_declared, 10) || 1,
-          total_members: members.length || parseInt(c.strength_declared, 10) || 1,
+          strength_declared: parseInt(c.strength_declared, 10) || total,
+          total_delegates: total,
+          total_members: total,
           checked_in: checkedInMembers.length,
           checked_in_count: checkedInMembers.length,
+          kits_issued: issued,
           preferences: c.preferences
         };
       });
@@ -504,16 +507,72 @@ class InMemoryDatabase {
       return { rows: rows.slice(0, 50), rowCount: rows.length };
     }
 
-    // 10. Inventory Merch
-    if (norm.includes('from inventory_merch') || norm.includes('merch')) {
-      const rows = (CANONICAL_DATASET.inventory_merch || []).map(m => ({
-        item: m.item || 'Festival T-Shirt',
-        size: m.size,
-        total_stock: parseInt(m.quantity, 10) || 500,
-        issued_count: Math.floor((parseInt(m.quantity, 10) || 500) * 0.4),
-        remaining_stock: Math.floor((parseInt(m.quantity, 10) || 500) * 0.6)
-      }));
+    // 10. Merchandise Inventory & v_merch_stock
+    if (norm.includes('from inventory_merch') || norm.includes('v_merch_stock')) {
+      const rows = (CANONICAL_DATASET.inventory_merch || []).map((m, idx) => {
+        const total = parseInt(m.quantity, 10) || 0;
+        const reserved = parseInt(m.reserved_quantity, 10) || 0;
+        const issued = Math.floor((total - reserved) * 0.4);
+        const available = total - reserved - issued;
+
+        let displayName = m.item;
+        if (m.item === 'T-shirt') displayName = `Festival T-Shirt (${m.size})`;
+        else if (m.item === 'ID card') displayName = 'Delegate ID Card';
+        else if (m.item === 'lanyard') displayName = 'Festival Lanyard';
+        else if (m.item === 'tote') displayName = 'Official Eco-Tote Bag';
+        else if (m.item === 'winner medal') displayName = 'Podium Winner Medal';
+        else if (m.item === 'special badge') displayName = 'VIP & Faculty Badge';
+
+        return {
+          id: `MERCH-${idx + 1}`,
+          item: displayName,
+          raw_item: m.item,
+          size: m.size,
+          is_apparel: m.size !== 'NA',
+          total_stock: total,
+          reserved_quantity: reserved,
+          issued_count: issued,
+          available_balance: available,
+          remaining_stock: available,
+          quantity: available
+        };
+      });
       return { rows, rowCount: rows.length };
+    }
+
+    // 10b. Merch Issuances & Duplicate Claims
+    if (norm.includes('from merch_issuances')) {
+      if (norm.includes('count(mi.id) > 1') || norm.includes('duplicate_claim')) {
+        return {
+          rows: [
+            {
+              canonical_id: 'P0142',
+              claim_attempts: 2,
+              associated_ids: 'P0142, P0142-DUP',
+              last_issued_at: new Date(Date.now() - 3600000).toISOString()
+            },
+            {
+              canonical_id: 'P0389',
+              claim_attempts: 2,
+              associated_ids: 'P0389, P0389-A',
+              last_issued_at: new Date(Date.now() - 7200000).toISOString()
+            }
+          ],
+          rowCount: 2
+        };
+      }
+
+      const recent = (CANONICAL_DATASET.participants || []).slice(0, 10).map((p, idx) => ({
+        id: `ISSUE-${idx + 1}`,
+        participant_id: p.participant_id,
+        participant_name: p.name,
+        college: p.college,
+        item_type: 'Festival Kit & T-Shirt',
+        size: p.tshirt_size || 'L',
+        issued_at: new Date(Date.now() - (idx + 1) * 300000).toISOString(),
+        issued_by: 'ST04'
+      }));
+      return { rows: recent, rowCount: recent.length };
     }
 
     // 11. Vendors

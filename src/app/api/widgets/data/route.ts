@@ -905,6 +905,36 @@ function getWidgetFallbackData(widgetId: string): any {
         { room_id: 'C-105', block: 'Block C', floor: '1', gender: 'female', capacity: 6, occupied_beds: 5, available_beds: 1, accessibility: 'none' }
       ];
 
+    case 'contingent_bulk_pickup':
+      return [
+        { contingent_id: 'C01', college: 'IIM Indore', total_delegates: 6, kits_issued: 4 },
+        { contingent_id: 'C02', college: 'IIM Kozhikode', total_delegates: 102, kits_issued: 68 },
+        { contingent_id: 'C03', college: 'IIM Shillong', total_delegates: 117, kits_issued: 82 },
+        { contingent_id: 'C04', college: 'IIM Ranchi', total_delegates: 47, kits_issued: 30 },
+        { contingent_id: 'C05', college: 'IIM Rohtak', total_delegates: 99, kits_issued: 65 },
+        { contingent_id: 'C06', college: 'IIM Udaipur', total_delegates: 98, kits_issued: 70 },
+        { contingent_id: 'C07', college: 'IIT Indore', total_delegates: 137, kits_issued: 95 },
+        { contingent_id: 'C08', college: 'IIT Bombay', total_delegates: 45, kits_issued: 32 },
+        { contingent_id: 'C09', college: 'IIT Delhi', total_delegates: 84, kits_issued: 60 },
+        { contingent_id: 'C10', college: 'IIT Kanpur', total_delegates: 29, kits_issued: 20 },
+        { contingent_id: 'C11', college: 'NIT Trichy', total_delegates: 101, kits_issued: 75 },
+        { contingent_id: 'C12', college: 'NIT Warangal', total_delegates: 42, kits_issued: 28 }
+      ];
+
+    case 'stock_by_size':
+      return [
+        { id: 'M1', item: 'Festival T-Shirt (S)', size: 'S', is_apparel: true, total_stock: 449, reserved_quantity: 14, issued_count: 179, available_balance: 256 },
+        { id: 'M2', item: 'Festival T-Shirt (M)', size: 'M', is_apparel: true, total_stock: 115, reserved_quantity: 6, issued_count: 46, available_balance: 63 },
+        { id: 'M3', item: 'Festival T-Shirt (L)', size: 'L', is_apparel: true, total_stock: 234, reserved_quantity: 15, issued_count: 93, available_balance: 126 },
+        { id: 'M4', item: 'Festival T-Shirt (XL)', size: 'XL', is_apparel: true, total_stock: 713, reserved_quantity: 29, issued_count: 285, available_balance: 399 },
+        { id: 'M5', item: 'Festival T-Shirt (XXL)', size: 'XXL', is_apparel: true, total_stock: 136, reserved_quantity: 25, issued_count: 54, available_balance: 57 },
+        { id: 'M6', item: 'Delegate ID Card', size: 'NA', is_apparel: false, total_stock: 1367, reserved_quantity: 22, issued_count: 546, available_balance: 799 },
+        { id: 'M7', item: 'Festival Lanyard', size: 'NA', is_apparel: false, total_stock: 2150, reserved_quantity: 1, issued_count: 860, available_balance: 1289 },
+        { id: 'M8', item: 'Official Eco-Tote Bag', size: 'NA', is_apparel: false, total_stock: 829, reserved_quantity: 12, issued_count: 331, available_balance: 486 },
+        { id: 'M9', item: 'Podium Winner Medal', size: 'NA', is_apparel: false, total_stock: 2269, reserved_quantity: 16, issued_count: 0, available_balance: 2253 },
+        { id: 'M10', item: 'VIP & Faculty Badge', size: 'NA', is_apparel: false, total_stock: 905, reserved_quantity: 23, issued_count: 362, available_balance: 520 }
+      ];
+
     case 'external_stay_tracker':
       return [
         { property_id: 'EXT01', property_name: 'Radisson Blu Indore', total_beds: 150, allocated_beds: 110, cost_per_bed_night: 1800, distance_km: 4.2, transport_availability: 'shuttle_30min' },

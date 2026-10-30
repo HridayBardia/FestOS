@@ -29,8 +29,8 @@ export const StockBySizeWidget: React.FC<WidgetProps> = ({ role }) => {
     try {
       const res = await fetch(`/api/widgets/data?widgetId=stock_by_size&role=${role}`);
       const json = await res.json();
-      if (json.success) setData(json.data);
-      else setError(json.error);
+      if (json.success && Array.isArray(json.data)) setData(json.data);
+      else setError(json.error || 'Failed to load stock data');
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -42,18 +42,62 @@ export const StockBySizeWidget: React.FC<WidgetProps> = ({ role }) => {
     fetchData();
   }, [role]);
 
+  // Separate apparel (sizes S, M, L, XL, XXL) from collateral items (ID cards, lanyards, medals, badges)
+  const apparel = data.filter((m) => m.is_apparel || (m.size && m.size !== 'NA'));
+  const collateral = data.filter((m) => !m.is_apparel || m.size === 'NA');
+
   return (
     <WidgetCard widgetId="stock_by_size" loading={loading} error={error}>
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-        {data.map((m) => (
-          <div key={m.id} className="p-3 rounded-lg bg-white border border-[#E5DFD3] text-center shadow-sm">
-            <span className="font-mono text-base font-bold text-[#A3703F]">{m.size}</span>
-            <p className="font-serif font-bold text-[#1A1A1A] text-lg mt-1">{m.available_balance} left</p>
-            <div className="mt-2 pt-1 border-t border-[#EFEBE3] text-[10px] font-mono text-[#6B655E]">
-              Total: {m.total_stock} | Issued: {m.issued_count}
+      <div className="space-y-4 text-xs">
+        {/* Apparel Section: S, M, L, XL, XXL */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#8F8982]">Festival T-Shirts by Size</span>
+            <span className="text-[10px] font-mono text-[#A3703F]">Aarohan 2026 Official Apparel</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            {apparel.map((m) => {
+              const available = m.available_balance ?? (m.total_stock - (m.issued_count || 0) - (m.reserved_quantity || 0));
+              return (
+                <div key={m.id || m.size} className="p-3 rounded-lg bg-white border border-[#E5DFD3] text-center shadow-xs">
+                  <span className="font-mono text-base font-bold text-[#A3703F]">{m.size}</span>
+                  <p className="font-serif font-bold text-[#1A1A1A] text-lg mt-0.5">{available} left</p>
+                  <div className="mt-2 pt-1 border-t border-[#EFEBE3] text-[10px] font-mono text-[#6B655E] flex flex-col gap-0.5">
+                    <span>Total: {m.total_stock}</span>
+                    <span>Issued: {m.issued_count || 0}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Kit Collateral Section */}
+        {collateral.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#8F8982]">Kit Collateral & Accreditation Depot</span>
+              <span className="text-[10px] font-mono text-[#6B655E]">Physical Credentials</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+              {collateral.map((m) => {
+                const available = m.available_balance ?? (m.total_stock - (m.issued_count || 0) - (m.reserved_quantity || 0));
+                return (
+                  <div key={m.id || m.item} className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] text-center shadow-xs flex flex-col justify-between">
+                    <span className="font-sans text-[11px] font-bold text-[#1A1A1A] line-clamp-1" title={m.item}>
+                      {m.item}
+                    </span>
+                    <p className="font-serif font-bold text-[#A3703F] text-base mt-1">{available} left</p>
+                    <div className="mt-2 pt-1 border-t border-[#EFEBE3] text-[10px] font-mono text-[#6B655E] flex flex-col gap-0.5">
+                      <span>Total: {m.total_stock}</span>
+                      <span>Issued: {m.issued_count || 0}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        ))}
+        )}
       </div>
     </WidgetCard>
   );
@@ -325,16 +369,17 @@ export const SizeExchangeToolWidget: React.FC<WidgetProps> = ({ role, onRefreshT
 };
 
 // 5. Contingent Bulk Pickup Widget
-export const ContingentBulkPickupWidget: React.FC<WidgetProps> = ({ role }) => {
+export const ContingentBulkPickupWidget: React.FC<WidgetProps> = ({ role, onRefreshTrigger }) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [issuingId, setIssuingId] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       const res = await fetch(`/api/widgets/data?widgetId=contingent_bulk_pickup&role=${role}`);
       const json = await res.json();
-      if (json.success) setData(json.data);
+      if (json.success && Array.isArray(json.data)) setData(json.data);
       else setError(json.error);
     } catch (e: any) {
       setError(e.message);
@@ -347,25 +392,93 @@ export const ContingentBulkPickupWidget: React.FC<WidgetProps> = ({ role }) => {
     fetchData();
   }, [role]);
 
+  const handleBulkIssue = async (contingent: any) => {
+    setIssuingId(contingent.contingent_id);
+    try {
+      const res = await fetch('/api/merch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionType: 'bulk_issue',
+          contingentId: contingent.contingent_id,
+          college: contingent.college,
+          actorRole: role
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setData((prev) =>
+          prev.map((c) =>
+            c.contingent_id === contingent.contingent_id
+              ? { ...c, kits_issued: c.total_delegates }
+              : c
+          )
+        );
+        if (onRefreshTrigger) onRefreshTrigger();
+      } else {
+        alert(json.error || 'Failed to issue bulk batch');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIssuingId(null);
+    }
+  };
+
   return (
     <WidgetCard widgetId="contingent_bulk_pickup" loading={loading} error={error}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs max-h-[260px] overflow-y-auto pr-1">
-        {data.map((c) => (
-          <div key={c.contingent_id} className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] flex flex-col justify-between">
-            <div>
-              <span className="font-mono text-[10px] font-bold text-[#A3703F]">{c.contingent_id}</span>
-              <p className="font-serif font-bold text-[#1A1A1A] mt-0.5 truncate">{c.college}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs max-h-[320px] overflow-y-auto pr-1">
+        {data.map((c) => {
+          const total = c.total_delegates || 1;
+          const issued = c.kits_issued ?? Math.floor(total * 0.7);
+          const isComplete = issued >= total;
+          const isPending = !isComplete;
+          const isProcessing = issuingId === c.contingent_id;
+
+          return (
+            <div key={c.contingent_id} className="p-3 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] flex flex-col justify-between shadow-xs">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-[10px] font-bold text-[#A3703F]">{c.contingent_id}</span>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-medium ${
+                    isComplete ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
+                  }`}>
+                    {isComplete ? 'Complete' : 'Pending'}
+                  </span>
+                </div>
+                <p className="font-serif font-bold text-[#1A1A1A] text-sm truncate" title={c.college}>
+                  {c.college}
+                </p>
+              </div>
+
+              <div className="mt-2.5 pt-2 border-t border-[#EFEBE3] space-y-2">
+                <div className="flex justify-between items-center text-[11px] font-mono text-[#6B655E]">
+                  <span>Issued: <strong className="text-[#1A1A1A]">{issued}</strong>/{total}</span>
+                  <span>{Math.round((issued / total) * 100)}%</span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-[#EFEBE3] h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${isComplete ? 'bg-emerald-600' : 'bg-[#A3703F]'}`}
+                    style={{ width: `${Math.min(100, Math.round((issued / total) * 100))}%` }}
+                  />
+                </div>
+
+                {isPending && (
+                  <button
+                    onClick={() => handleBulkIssue(c)}
+                    disabled={isProcessing}
+                    className="w-full mt-1 py-1 px-2 text-[10px] font-bold uppercase rounded bg-[#A3703F] text-white hover:bg-[#8C6D36] transition-colors disabled:opacity-50"
+                  >
+                    {isProcessing ? 'Issuing...' : 'Issue Batch'}
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="mt-2 pt-1 border-t border-[#EFEBE3] flex justify-between text-[11px] font-mono text-[#6B655E]">
-              <span>Issued: {c.kits_issued}/{c.total_delegates}</span>
-              <span className={c.kits_issued === c.total_delegates ? 'text-emerald-700' : 'text-amber-800'}>
-                {c.kits_issued === c.total_delegates ? 'Complete' : 'Pending'}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </WidgetCard>
   );
 };
-
