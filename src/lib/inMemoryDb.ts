@@ -26,7 +26,6 @@ class InMemoryDatabase {
   private approvals: any[] = [];
   private duplicateCandidates: any[] = [];
   private scheduleSlots: any[] = [];
-  private importIssues: any[] = [];
 
   constructor() {
     this.seedInitialState();
@@ -163,125 +162,23 @@ class InMemoryDatabase {
     this.approvals = [
       {
         id: 'APP-001',
-        title: 'Emergency overflow bed release: IIM Bangalore contingent',
+        title: 'External Hotel Allocation Override for IIM Bangalore Contingent',
         requested_by: 'ST02 (Hospitality Lead)',
-        entity_table: 'bed_allocations',
-        entity_id: 'C02',
-        action: 'overflow_external_allocation',
-        reason: 'Emergency overflow: 24 delegates from IIM Bangalore allocated to Radisson Blu due to Block B capacity reach.',
+        department: 'hospitality',
         category: 'budget',
-        cost: 43200,
+        cost: 45000,
         status: 'pending',
         created_at: new Date(Date.now() - 1200000).toISOString()
       },
       {
         id: 'APP-002',
-        title: 'Wheelchair accessibility transfer: Room G01 priority placement',
-        requested_by: 'ST03 (Hospitality Front Desk)',
-        entity_table: 'hostel_rooms',
-        entity_id: 'P0015',
-        action: 'accessibility_priority_override',
-        reason: 'Delegate P0015 (Arjun Nair, IIT Bombay) requested ground floor ramp accessibility transfer to Room G01.',
-        category: 'housing',
+        title: 'Event Schedule Delay Authorization: E04 Battle of Bands',
+        requested_by: 'ST05 (Events Lead)',
+        department: 'events',
+        category: 'schedule',
         cost: 0,
-        status: 'approved',
-        created_at: new Date(Date.now() - 2400000).toISOString()
-      },
-      {
-        id: 'APP-003',
-        title: 'Escort faculty private room allocation override',
-        requested_by: 'ST02 (Hospitality Lead)',
-        entity_table: 'hostel_rooms',
-        entity_id: 'C05',
-        action: 'faculty_escort_room_reserve',
-        reason: 'Faculty escort from XLRI Jamshedpur requires separate single rooming near contingent per festival constraint rule 5.',
-        category: 'housing',
-        cost: 0,
-        status: 'approved',
-        created_at: new Date(Date.now() - 3600000).toISOString()
-      },
-      {
-        id: 'APP-004',
-        title: 'Budget variance authorization: Sayaji Hotel buffer expansion',
-        requested_by: 'ST02 (Hospitality Lead)',
-        entity_table: 'bed_allocations',
-        entity_id: 'EXT02',
-        action: 'budget_limit_override',
-        reason: 'External buffer expansion of 20 beds at Sayaji Hotel to absorb late-arriving contingents within approved budget.',
-        category: 'budget',
-        cost: 32000,
         status: 'pending',
-        created_at: new Date(Date.now() - 4800000).toISOString()
-      }
-    ];
-
-    // 5.5 Pre-generate cross-department validation issues and alerts
-    this.importIssues = [
-      {
-        id: 'ISSUE-00001',
-        file: 'participants.csv',
-        row_number: 15,
-        field: 'accessibility_needs',
-        severity: 'CRITICAL',
-        issue_type: 'accessibility_constraint',
-        title: 'Wheelchair Ground Floor Mandate',
-        description: 'Delegate P0015 (Arjun Nair, IIT Bombay) declared wheelchair access. Hard constraint: Must be placed on Ground Floor (G01-G08) with ramp access.',
-        suggested_action: 'Lock room allocation to Ground Floor only. Do not move above Floor 0.'
-      },
-      {
-        id: 'ISSUE-00002',
-        file: 'vendors.csv',
-        row_number: 5,
-        field: 'compliance_cert',
-        severity: 'CRITICAL',
-        issue_type: 'expired_compliance',
-        title: 'Vendor Food Hygiene Expiry',
-        description: 'Vendor VND05 (Vendor E) health and safety certificate expired on 2026-09-29 prior to festival commencement.',
-        suggested_action: 'Hold vendor payout settlement and require emergency re-inspection before dinner service.'
-      },
-      {
-        id: 'ISSUE-00003',
-        file: 'schedule.csv',
-        row_number: 4,
-        field: 'venue_id',
-        severity: 'HIGH',
-        issue_type: 'sound_clash',
-        title: 'Acoustic Interference Conflict',
-        description: 'Event E04 (Battle of Bands) at LT-1 acoustic threshold clashes with simultaneous quiet debate round at LT-2.',
-        suggested_action: 'Stagger start by 45 minutes or route band sound check through Auditorium audio baffle.'
-      },
-      {
-        id: 'ISSUE-00004',
-        file: 'participants.csv',
-        row_number: 240,
-        field: 'email',
-        severity: 'MEDIUM',
-        issue_type: 'duplicate_registration',
-        title: 'Duplicate Candidate Suspected',
-        description: 'P0240 and P0241 share identical phone and college ID with minor spelling variation in name.',
-        suggested_action: 'Merge records via Registration Desk Duplicate Candidate Resolver.'
-      },
-      {
-        id: 'ISSUE-00005',
-        file: 'hostels.csv',
-        row_number: 3,
-        field: 'capacity',
-        severity: 'HIGH',
-        issue_type: 'overflow_threshold',
-        title: 'Campus Hostel Occupancy at 94%',
-        description: 'IPM Residence 1 and 2 female wings nearing 100% capacity. 36 incoming female delegates pending check-in.',
-        suggested_action: 'Authorize hotel overflow block at Radisson Blu with shuttle dispatch.'
-      },
-      {
-        id: 'ISSUE-00006',
-        file: 'logistics.csv',
-        row_number: 12,
-        field: 'quantity',
-        severity: 'MEDIUM',
-        issue_type: 'merch_shortage',
-        title: 'Merchandise Size L Buffer Low',
-        description: 'Inventory station North reports Size L festival t-shirts down to 18 units with 80 uncollected registered delegates.',
-        suggested_action: 'Transfer 50 units from Central Depot reserve to North counter.'
+        created_at: new Date(Date.now() - 2400000).toISOString()
       }
     ];
 
@@ -418,44 +315,8 @@ class InMemoryDatabase {
       return { rows, rowCount: rows.length };
     }
 
-    // 4.1 Special Needs Queue
-    if (norm.includes('accessibility_needs') && (norm.includes('from participants') || norm.includes('special_needs') || norm.includes('p.accessibility_needs'))) {
-      const special = (CANONICAL_DATASET.participants || [])
-        .filter(p => p.accessibility_needs && p.accessibility_needs.toLowerCase() !== 'none' && p.accessibility_needs.trim() !== '')
-        .slice(0, 15)
-        .map((p, idx) => ({
-          participant_id: p.participant_id,
-          name: p.name,
-          college: p.college,
-          accessibility_needs: p.accessibility_needs,
-          dietary_needs: p.dietary_needs || 'Standard',
-          room_id: `G0${(idx % 8) + 1}`,
-          property_id: null,
-          floor: 0,
-          room_has_ramp: 'yes'
-        }));
-      return { rows: special, rowCount: special.length };
-    }
-
-    // 4.2 Approvals / Room Override Dispatch
-    if (norm.includes('from approvals')) {
-      if (norm.includes('update approvals')) {
-        const id = params?.[1] || params?.[0];
-        const status = params?.[0] || 'approved';
-        const app = this.approvals.find(a => a.id === id);
-        if (app) app.status = status;
-        return { rows: [], rowCount: 1 };
-      }
-      return { rows: this.approvals, rowCount: this.approvals.length };
-    }
-
-    // 4.3 Cross-Department Alerts & Import Issues
-    if (norm.includes('from import_issues')) {
-      return { rows: this.importIssues, rowCount: this.importIssues.length };
-    }
-
     // 5. Hostel Rooms
-    if (norm.includes('from hostel_rooms') || norm.includes('from raw_hostels') || (norm.includes('hostel') && !norm.includes('approvals') && !norm.includes('participants'))) {
+    if (norm.includes('from hostel_rooms') || norm.includes('from raw_hostels') || norm.includes('hostel')) {
       const rows = (CANONICAL_DATASET.hostels || []).map((h, idx) => {
         const capacity = parseInt(h.capacity, 10) || 4;
         const occupied = Math.min(capacity, (idx % 3) === 0 ? capacity : (idx % 2));
