@@ -21,6 +21,11 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
+
+# local database files
+data/pg_data*
+data/pg_data/**
 
 # local env files
 .env*.local
@@ -35,4 +40,3 @@ data/pg_data
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
