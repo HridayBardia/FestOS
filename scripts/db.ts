@@ -156,37 +156,37 @@ class DatabaseClient {
   public async transaction<T>(callback: (client: { query: (text: string, params?: any[]) => Promise<QueryResult> }) => Promise<T>): Promise<T> {
     await this.getClient();
 
-    if (!this.useInMemory && this.pool) {
-      try {
-        const client = await this.pool.connect();
+      if (!this.useInMemory && this.pool) {
         try {
-          await client.query('BEGIN');
-          const res = await callback({
-            query: async (text: string, params?: any[]) => {
-              const r = await client.query(text, params);
-              return { rows: r.rows, rowCount: r.rowCount ?? r.rows.length };
-            }
-          });
-          await client.query('COMMIT');
-          return res;
-        } catch (e) {
-          await client.query('ROLLBACK');
-          throw e;
-        } finally {
-          client.release();
+          const client = await this.pool.connect();
+          try {
+            await client.query('BEGIN');
+            const res = await callback({
+              query: async (text: string, params?: any[]) => {
+                const r = await client.query(text, params);
+                return { rows: r.rows, rowCount: r.rowCount ?? r.rows.length };
+              }
+            });
+            await client.query('COMMIT');
+            return res;
+          } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+          } finally {
+            client.release();
+          }
+        } catch (poolErr) {
+          console.warn('[DatabaseClient] Transaction fallback to in-memory:', (poolErr as any)?.message);
         }
-      } catch (poolErr) {
-        console.warn('[DatabaseClient] Transaction fallback to in-memory:', (poolErr as any)?.message);
-      }
-    }
+        }
 
-    // In-memory atomic transaction simulation
-    return await callback({
-      query: async (text: string, params?: any[]) => {
-        return await inMemoryDb.query(text, params);
-      }
-    });
-  }
+        // In-memory atomic transaction simulation
+        return await callback({
+          query: async (text: string, params?: any[]) => {
+            return await inMemoryDb.query(text, params);
+          }
+      });
+    }
 
   public async close(): Promise<void> {
     if (this.pool) {
