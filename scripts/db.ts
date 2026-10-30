@@ -1,6 +1,6 @@
 // FestOS Universal Database Client
-// Resilient dual-mode connector: PostgreSQL (DATABASE_URL / Supabase / Neon) + Canonical In-Memory Engine
-// Safe on Vercel serverless environments with zero read-only filesystem errors or WebAssembly OOM
+// Resilient dual-mode connector: PostgreSQL (DATABASE_URL / Supabase / Neon) + Local PGlite + In-Memory Fallback
+// Safe on Vercel serverless environments and local Windows runtime
 // Zero em dashes or en dashes
 
 import path from 'path';
@@ -9,18 +9,26 @@ import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import { inMemoryDb } from '../src/lib/inMemoryDb';
 
-// Load .env.local first, fallback to .env
-const envLocalPath = path.resolve(process.cwd(), '.env.local');
-if (fs.existsSync(envLocalPath)) {
-  dotenv.config({ path: envLocalPath });
-} else {
-  dotenv.config();
+// Load .env.local first, fallback to .env (quietly and only if AUTH_SECRET not yet present)
+if (!process.env.AUTH_SECRET) {
+  const envLocalPath = path.resolve(process.cwd(), '.env.local');
+  if (fs.existsSync(envLocalPath)) {
+    dotenv.config({ path: envLocalPath });
+  } else {
+    dotenv.config();
+  }
 }
 
 interface QueryResult {
   rows: any[];
   rowCount: number;
 }
+
+// Global anchor to share PGlite across Next.js re-evaluations
+const globalForDb = globalThis as unknown as {
+  _festos_pglite?: any;
+  _festos_pglite_promise?: Promise<any>;
+};
 
 class DatabaseClient {
   private pool: Pool | null = null;
@@ -30,7 +38,7 @@ class DatabaseClient {
   private initAttempted: boolean = false;
 
   private async getClient() {
-    if (this.initAttempted) return;
+    if (this.initAttempted && (this.pool || this.pglite || this.useInMemory)) return;
     this.initAttempted = true;
 
     // 1. Production PostgreSQL via DATABASE_URL (Supabase, Neon, RDS, etc.)
@@ -54,34 +62,46 @@ class DatabaseClient {
       }
     }
 
-    // 2. Detect Vercel or Serverless read-only environment
-    const isServerless = Boolean(
+    // 2. Detect True Cloud Serverless (Vercel, AWS Lambda) - do NOT flag local Windows production as serverless
+    const isCloudServerless = Boolean(
       process.env.VERCEL ||
-      process.env.AWS_LAMBDA_FUNCTION_NAME ||
-      process.env.NEXT_RUNTIME ||
-      process.env.NODE_ENV === 'production'
+      process.env.AWS_LAMBDA_FUNCTION_NAME
     );
 
-    if (isServerless) {
-      console.log('[DatabaseClient] Serverless deployment detected. Initializing high performance in-memory canonical engine.');
+    if (isCloudServerless) {
+      console.log('[DatabaseClient] Cloud serverless detected. Using in-memory engine.');
       this.useInMemory = true;
       this.isPGlite = false;
       return;
     }
 
-    // 3. Local Development: Attempt PGlite with safe fallback
+    // 3. Local Environment: Use PGlite singleton with waitReady and safe fallback
     try {
-      const dataDir = path.resolve(process.cwd(), 'data', 'pg_data');
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
+      if (globalForDb._festos_pglite) {
+        this.pglite = globalForDb._festos_pglite;
+        this.isPGlite = true;
+        this.useInMemory = false;
+        return;
       }
 
-      // Dynamic import to prevent WebAssembly instantiate crash in restrictive environments
-      const { PGlite } = await import('@electric-sql/pglite');
-      this.pglite = new PGlite(dataDir);
+      if (!globalForDb._festos_pglite_promise) {
+        const dataDir = path.resolve(process.cwd(), 'data', 'pg_data');
+        if (!fs.existsSync(dataDir)) {
+          fs.mkdirSync(dataDir, { recursive: true });
+        }
+
+        const { PGlite } = await import('@electric-sql/pglite');
+        globalForDb._festos_pglite_promise = (async () => {
+          const inst = new PGlite(dataDir);
+          await inst.waitReady;
+          globalForDb._festos_pglite = inst;
+          return inst;
+        })();
+      }
+
+      this.pglite = await globalForDb._festos_pglite_promise;
       this.isPGlite = true;
       this.useInMemory = false;
-      console.log('[DatabaseClient] Local PGlite initialized successfully at:', dataDir);
     } catch (err) {
       console.warn('[DatabaseClient] PGlite failed to initialize. Falling back to in-memory database:', (err as any)?.message || err);
       this.useInMemory = true;
@@ -149,44 +169,42 @@ class DatabaseClient {
       }
     }
 
-    // Rock-solid fallback: Always returns valid canonical rows, never throws
     return await inMemoryDb.query(text, params);
   }
 
   public async transaction<T>(callback: (client: { query: (text: string, params?: any[]) => Promise<QueryResult> }) => Promise<T>): Promise<T> {
     await this.getClient();
 
-      if (!this.useInMemory && this.pool) {
+    if (!this.useInMemory && this.pool) {
+      try {
+        const client = await this.pool.connect();
         try {
-          const client = await this.pool.connect();
-          try {
-            await client.query('BEGIN');
-            const res = await callback({
-              query: async (text: string, params?: any[]) => {
-                const r = await client.query(text, params);
-                return { rows: r.rows, rowCount: r.rowCount ?? r.rows.length };
-              }
-            });
-            await client.query('COMMIT');
-            return res;
-          } catch (e) {
-            await client.query('ROLLBACK');
-            throw e;
-          } finally {
-            client.release();
-          }
-        } catch (poolErr) {
-          console.warn('[DatabaseClient] Transaction fallback to in-memory:', (poolErr as any)?.message);
+          await client.query('BEGIN');
+          const res = await callback({
+            query: async (text: string, params?: any[]) => {
+              const r = await client.query(text, params);
+              return { rows: r.rows, rowCount: r.rowCount ?? r.rows.length };
+            }
+          });
+          await client.query('COMMIT');
+          return res;
+        } catch (e) {
+          await client.query('ROLLBACK');
+          throw e;
+        } finally {
+          client.release();
         }
-        }
-
-        // In-memory atomic transaction simulation
-        return await callback({
-          query: async (text: string, params?: any[]) => {
-            return await inMemoryDb.query(text, params);
-          }
-      });
+      } catch (poolErr) {
+        console.warn('[DatabaseClient] Transaction fallback to in-memory:', (poolErr as any)?.message);
+      }
     }
+
+    return await callback({
+      query: async (text: string, params?: any[]) => {
+        return await inMemoryDb.query(text, params);
+      }
+    });
+  }
 
   public async close(): Promise<void> {
     if (this.pool) {
