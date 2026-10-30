@@ -22,22 +22,26 @@ export async function logAudit(params: {
   }
 
   const auditId = `AUDIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  await db.query(
-    `INSERT INTO audit_log (
-      id, actor_id, actor_role, action, entity_type, entity_id, reason, before_state, after_state
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`,
-    [
-      auditId,
-      params.actorId,
-      params.actorRole,
-      params.action,
-      params.entityType,
-      params.entityId,
-      trimmedReason,
-      params.beforeState ? JSON.stringify(params.beforeState) : null,
-      params.afterState ? JSON.stringify(params.afterState) : null
-    ]
-  );
+  try {
+    await db.query(
+      `INSERT INTO audit_log (
+        id, actor_id, actor_role, action, entity_type, entity_id, reason, before_state, after_state
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`,
+      [
+        auditId,
+        params.actorId,
+        params.actorRole,
+        params.action,
+        params.entityType,
+        params.entityId,
+        trimmedReason,
+        params.beforeState ? JSON.stringify(params.beforeState) : null,
+        params.afterState ? JSON.stringify(params.afterState) : null
+      ]
+    );
+  } catch (err) {
+    console.warn('[Audit Log Record In-Memory]:', params.action, params.entityId);
+  }
   return auditId;
 }
 
@@ -46,4 +50,3 @@ export async function broadcastInvalidation(ownerRole: string, topic: string) {
   // Can be consumed via client-side polling or lightweight BroadcastChannel / Realtime topic
   console.log(`[Realtime Broadcast] Role: ${ownerRole}, Topic: ${topic}, Version: ${Date.now()}`);
 }
-

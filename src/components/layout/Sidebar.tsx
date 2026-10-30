@@ -9,35 +9,40 @@ import {
   Truck,
   Radio,
   Flame,
-  Database,
-  CheckCircle2,
-  AlertCircle
+  Shirt,
+  UtensilsCrossed,
+  ClipboardList
 } from 'lucide-react';
 import { useFest } from '@/context/FestContext';
+import { RoleKey, PERMISSION_MATRIX, ROLES } from '@/config/roles';
 
-interface SidebarProps {
+export interface SidebarProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
-  onOpenConnectModal: () => void;
+  onOpenConnectModal?: () => void;
+  role?: RoleKey;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, onOpenConnectModal }) => {
-  const { clashes, activeDisruptions, isUsingRemoteSupabase, coreTeam, participantsCount } = useFest();
+export const Sidebar: React.FC<SidebarProps> = ({
+  currentTab,
+  setCurrentTab,
+  onOpenConnectModal,
+  role = 'director',
+}) => {
+  const { clashes, activeDisruptions, coreTeam, participantsCount } = useFest();
 
-  const navItems = [
+  const permissions = PERMISSION_MATRIX[role] || PERMISSION_MATRIX.director;
+  const roleDef = ROLES[role] || ROLES.director;
+
+  // Sector-specific tabs configuration
+  const allNavItems = [
     {
       id: 'dashboard',
-      label: 'Command Overview',
+      label: role === 'director' ? 'Executive Overview' : `${roleDef.name} Desk`,
       subtitle: 'Real-time telemetry',
       icon: LayoutDashboard,
       badge: null,
-    },
-    {
-      id: 'accommodation',
-      label: 'Accommodation Grid',
-      subtitle: 'Hostels & external stays',
-      icon: Building2,
-      badge: null,
+      visible: true,
     },
     {
       id: 'participants',
@@ -45,6 +50,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, onO
       subtitle: `${participantsCount.toLocaleString()} delegates`,
       icon: Users,
       badge: null,
+      visible: permissions.participants !== 'none',
+    },
+    {
+      id: 'accommodation',
+      label: 'Accommodation Grid',
+      subtitle: 'Hostels & external stays',
+      icon: Building2,
+      badge: null,
+      visible: permissions.accommodation !== 'none',
     },
     {
       id: 'schedule',
@@ -53,6 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, onO
       icon: CalendarDays,
       badge: clashes.length > 0 ? `${clashes.length} Clashes` : null,
       badgeColor: 'bg-[#FAECEB] text-[#7C2D2A] border border-[#F0C9C7]',
+      visible: permissions.schedule !== 'none',
     },
     {
       id: 'logistics',
@@ -60,18 +75,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, onO
       subtitle: 'Hygiene & equipment depot',
       icon: Truck,
       badge: null,
+      visible: permissions.logistics !== 'none' || permissions.vendors !== 'none',
     },
     {
       id: 'disruptions',
-      label: 'Disruption Testing',
-      subtitle: 'Jury injection harness',
+      label: 'Disruption Harness',
+      subtitle: 'Live stress testing',
       icon: Flame,
-      badge: activeDisruptions.length > 0 ? `${activeDisruptions.length} Active` : 'Jury Mode',
-      badgeColor: activeDisruptions.length > 0
-        ? 'bg-[#FAF0E4] text-[#7A4E1D] border border-[#EED5BC] animate-pulse'
-        : 'bg-[#F6EFE6] text-[#A3703F] border border-[#E5DFD3]',
+      badge: activeDisruptions.length > 0 ? `${activeDisruptions.length} Active` : null,
+      badgeColor: 'bg-[#FAF0E4] text-[#7A4E1D] border border-[#EED5BC] animate-pulse',
+      visible: Boolean(permissions.disruptions && permissions.disruptions !== 'report_only'),
     },
   ];
+
+  const visibleNavItems = allNavItems.filter((item) => item.visible);
 
   return (
     <aside className="w-72 bg-[#F5F2EC] border-r border-[#E5DFD3] flex flex-col h-screen shrink-0 text-[#1A1A1A] select-none shadow-[1px_0_12px_rgba(0,0,0,0.015)]">
@@ -88,38 +105,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, onO
                 2026
               </span>
             </div>
-            <p className="text-[11px] text-[#6B655E] font-medium tracking-wide">
-              IIM Indore · Aarohan Directorate
+            <p className="text-[11px] text-[#8F8982] uppercase tracking-wider font-mono font-medium mt-0.5">
+              Aarohan · IIM Indore
             </p>
           </div>
         </div>
 
-        {/* Supabase Connection Status Pill */}
-        <button
-          onClick={onOpenConnectModal}
-          className="mt-4 w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-[#E5DFD3] hover:border-[#A3703F]/50 transition-all text-xs group shadow-sm text-left"
-        >
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isUsingRemoteSupabase ? 'bg-[#2D5A3E]' : 'bg-[#A3703F]'} opacity-75`}></span>
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isUsingRemoteSupabase ? 'bg-[#2D5A3E]' : 'bg-[#A3703F]'}`}></span>
-            </span>
-            <span className="text-[11px] font-medium text-[#1A1A1A] group-hover:text-[#A3703F] transition-colors">
-              {isUsingRemoteSupabase ? 'Supabase Live' : 'Supabase Client'}
-            </span>
-          </div>
-          <span className="text-[10px] font-mono uppercase text-[#A3703F] bg-[#F6EFE6] px-1.5 py-0.5 rounded border border-[#E5DFD3]">
-            Config
+        {/* Active Department Sector Badge */}
+        <div className="mt-4 pt-3 border-t border-[#E5DFD3] flex items-center justify-between">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-[#8F8982]">Department</span>
+          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${roleDef.badgeColor}`}>
+            {roleDef.name}
           </span>
-        </button>
+        </div>
       </div>
 
-      {/* Main Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
-        <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-[#8F8982]">
-          Operations Directorate
+      {/* Role-Specific Navigation Links */}
+      <nav className="flex-1 p-3.5 space-y-1.5 overflow-y-auto">
+        <div className="px-3 pt-2 pb-1.5 text-[10px] uppercase font-bold tracking-wider text-[#8F8982]">
+          {roleDef.department} Portal
         </div>
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
           return (
@@ -146,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, onO
                 </div>
               </div>
               {item.badge && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${item.badgeColor}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${item.badgeColor || 'bg-[#F6EFE6] text-[#A3703F]'}`}>
                   {item.badge}
                 </span>
               )}
@@ -155,30 +161,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, onO
         })}
       </nav>
 
-      {/* Core Team Walkie Channel Dispatch */}
+      {/* Sector Walkie Channel Dispatch */}
       <div className="p-4 border-t border-[#E5DFD3] bg-[#FAF8F5]/80">
         <div className="flex items-center justify-between text-xs text-[#6B655E] mb-2 font-mono">
           <div className="flex items-center gap-1.5">
             <Radio className="w-3.5 h-3.5 text-[#A3703F]" />
-            <span className="uppercase tracking-wider font-semibold text-[10px]">Dispatch Channel</span>
+            <span className="uppercase tracking-wider font-semibold text-[10px]">Active Shift</span>
           </div>
-          <span className="text-[#2D5A3E] font-bold text-[10px]">OPS 02</span>
+          <span className="text-[#2D5A3E] font-bold text-[10px]">{roleDef.defaultShift}</span>
         </div>
-        <div className="space-y-1.5 text-xs">
-          {coreTeam.slice(0, 2).map((member) => (
-            <div
-              key={member.id}
-              className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white border border-[#E5DFD3] shadow-sm"
-            >
-              <div className="truncate pr-2">
-                <p className="text-[#1A1A1A] font-semibold text-[11px] truncate">{member.name}</p>
-                <p className="text-[10px] text-[#8F8982] capitalize">{member.role.replace('_', ' ')}</p>
-              </div>
-              <span className="text-[10px] font-mono text-[#A3703F] bg-[#F6EFE6] px-1.5 py-0.5 rounded border border-[#E5DFD3] shrink-0 font-bold">
-                {member.walkie_channel.split(' ')[0]} {member.walkie_channel.split(' ')[1]}
-              </span>
-            </div>
-          ))}
+        <div className="px-2.5 py-2 rounded-lg bg-white border border-[#E5DFD3] shadow-sm text-xs">
+          <p className="text-[11px] font-semibold text-[#1A1A1A]">{roleDef.name} Channel</p>
+          <p className="text-[10px] text-[#8F8982] line-clamp-1">{roleDef.description}</p>
         </div>
       </div>
     </aside>

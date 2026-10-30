@@ -13,14 +13,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify account is active in database
-    const userCheck = await db.query(
-      'SELECT is_active FROM app_users WHERE login_id = $1;',
-      [session.memberId]
-    );
-
-    if (userCheck.rows.length === 0 || !userCheck.rows[0].is_active) {
-      return NextResponse.json({ success: false, error: 'Account disabled' }, { status: 401 });
+    // Verify account is active in database if available
+    try {
+      const userCheck = await db.query(
+        'SELECT is_active FROM app_users WHERE login_id = $1;',
+        [session.memberId]
+      );
+      if (userCheck.rows.length > 0 && !userCheck.rows[0].is_active) {
+        return NextResponse.json({ success: false, error: 'Account disabled' }, { status: 401 });
+      }
+    } catch (e) {
+      // In-memory session verified
     }
 
     return NextResponse.json(

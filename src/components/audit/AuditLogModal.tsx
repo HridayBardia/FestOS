@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { FileSpreadsheet, X, Search, Download, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileSpreadsheet, X, Search, Download, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useFest } from '@/context/FestContext';
 import { formatISTTimeWithSeconds } from '@/lib/formatters';
 
@@ -13,16 +13,67 @@ interface AuditLogModalProps {
 export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose }) => {
   const { auditLogs } = useFest();
   const [query, setQuery] = useState('');
+  const [dbLogs, setDbLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch shared database audit logs across all 48 members
+  const fetchSharedLogs = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/audit-logs');
+      const json = await res.json();
+      if (json && json.success && Array.isArray(json.logs)) {
+        setDbLogs(json.logs);
+      }
+    } catch (e) {
+      // In-memory fallback
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchSharedLogs();
+      const interval = setInterval(fetchSharedLogs, 8000);
+      return () => clearInterval(interval);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const filtered = auditLogs.filter(
+  // Unify context in-memory logs with persisted database logs
+  const combinedLogs = [
+    ...dbLogs.map((l) => ({
+      id: l.id,
+      timestamp: l.timestamp || new Date().toISOString(),
+      actor: `${l.actor_id} (${l.actor_role})`,
+      action_type: l.action,
+      entity_id: l.entity_id,
+      entity_type: l.entity_type,
+      reason: l.reason,
+      previous_state: typeof l.before_state === 'string' ? l.before_state : JSON.stringify(l.before_state || 'Previous State'),
+      new_state: typeof l.after_state === 'string' ? l.after_state : JSON.stringify(l.after_state || 'Updated State'),
+      approved_by: l.actor_id,
+    })),
+    ...auditLogs,
+  ];
+
+  // Deduplicate by ID
+  const seenIds = new Set();
+  const uniqueLogs = combinedLogs.filter((l) => {
+    if (seenIds.has(l.id)) return false;
+    seenIds.add(l.id);
+    return true;
+  });
+
+  const filtered = uniqueLogs.filter(
     (log) =>
       log.actor.toLowerCase().includes(query.toLowerCase()) ||
       log.action_type.toLowerCase().includes(query.toLowerCase()) ||
-      log.reason.toLowerCase().includes(query.toLowerCase()) ||
-      log.approved_by.toLowerCase().includes(query.toLowerCase()) ||
-      log.entity_id.toLowerCase().includes(query.toLowerCase())
+      (log.reason && log.reason.toLowerCase().includes(query.toLowerCase())) ||
+      (log.approved_by && log.approved_by.toLowerCase().includes(query.toLowerCase())) ||
+      (log.entity_id && log.entity_id.toLowerCase().includes(query.toLowerCase()))
   );
 
   const handleExportCSV = () => {
@@ -33,17 +84,17 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
       `"${log.action_type}"`,
       `"${log.entity_id}"`,
       `"${log.entity_type}"`,
-      `"${log.reason.replace(/"/g, '""')}"`,
-      `"${log.previous_state}"`,
-      `"${log.new_state}"`,
-      `"${log.approved_by}"`,
+      `"${(log.reason || '').replace(/"/g, '""')}"`,
+      `"${log.previous_state || ''}"`,
+      `"${log.new_state || ''}"`,
+      `"${log.approved_by || ''}"`,
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `FestOS_Overrides_Audit_Log.csv`);
+    link.setAttribute('download', `FestOS_Master_Audit_Trail.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -59,20 +110,34 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-serif font-bold text-lg text-[#1A1A1A]">
-                `overrides_audit_log` Comprehensive Ledger
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-serif font-bold text-lg text-[#1A1A1A]">
+                  FestOS Central Master Audit Trail
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-[#EAF3EC] text-[#2D5A3E] border border-[#C7E2CE]">
+                  Live Shared Across All 48 Members
+                </span>
+              </div>
               <p className="text-xs text-[#6B655E]">
-                Immutable record of all policy overrides, room vacates, and venue shifts.
+                Immutable centralized ledger. Every change published by any organizer reflects instantly across all screens.
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-[#8F8982] hover:text-[#1A1A1A] hover:bg-[#FAF8F5] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchSharedLogs}
+              className="p-1.5 rounded-lg text-[#8F8982] hover:text-[#1A1A1A] hover:bg-[#FAF8F5] transition-colors"
+              title="Refresh Audit Trail"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#A3703F]' : ''}`} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-[#8F8982] hover:text-[#1A1A1A] hover:bg-[#FAF8F5] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Search & Export Toolbar */}
@@ -83,18 +148,23 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search audit trail by actor, reason, entity, or officer..."
+              placeholder="Search by officer ID, department, action, or reason..."
               className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-[#E5DFD3] text-[#1A1A1A] placeholder:text-[#8F8982] focus:outline-none focus:border-[#A3703F] shadow-sm font-medium"
             />
           </div>
 
-          <button
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#FAF8F5] text-[#1A1A1A] text-xs font-bold border border-[#E5DFD3] shadow-sm flex items-center gap-2 shrink-0 transition-colors"
-          >
-            <Download className="w-3.5 h-3.5 text-[#A3703F]" />
-            <span>Export CSV</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[#8F8982] font-mono">
+              {filtered.length} Recorded Action{filtered.length === 1 ? '' : 's'}
+            </span>
+            <button
+              onClick={handleExportCSV}
+              className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#FAF8F5] text-[#1A1A1A] text-xs font-bold border border-[#E5DFD3] shadow-sm flex items-center gap-2 shrink-0 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5 text-[#A3703F]" />
+              <span>Export Ledger</span>
+            </button>
+          </div>
         </div>
 
         {/* Table Body */}
@@ -103,11 +173,11 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
             <thead className="bg-[#FAF8F5] text-[11px] font-bold uppercase tracking-wider text-[#8F8982] sticky top-0 border-b border-[#E5DFD3]">
               <tr>
                 <th className="py-2.5 px-3">Time</th>
+                <th className="py-2.5 px-3">Authorized Officer</th>
                 <th className="py-2.5 px-3">Action Type</th>
                 <th className="py-2.5 px-3">Entity</th>
-                <th className="py-2.5 px-3">Mandatory Reason</th>
+                <th className="py-2.5 px-3">Mandatory Operational Reason</th>
                 <th className="py-2.5 px-3">State Transition</th>
-                <th className="py-2.5 px-3">Authorized By</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EFEBE3] font-mono text-[11px]">
@@ -116,19 +186,21 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
                   <td className="py-2.5 px-3 text-[#8F8982] whitespace-nowrap" suppressHydrationWarning>
                     {formatISTTimeWithSeconds(log.timestamp)}
                   </td>
+                  <td className="py-2.5 px-3 font-sans font-bold text-[#1A1A1A]">
+                    {log.actor}
+                  </td>
                   <td className="py-2.5 px-3">
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-[#F6EFE6] text-[#A3703F] border border-[#E5DFD3]">
                       {log.action_type}
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-[#1A1A1A] font-bold">{log.entity_id}</td>
-                  <td className="py-2.5 px-3 font-sans text-xs text-[#1A1A1A] max-w-xs">{log.reason}</td>
+                  <td className="py-2.5 px-3 font-sans text-xs text-[#1A1A1A] max-w-sm">{log.reason}</td>
                   <td className="py-2.5 px-3 text-[10px]">
                     <span className="text-[#8F8982]">{log.previous_state}</span>
                     <span className="mx-1 text-[#8F8982]">&rarr;</span>
                     <span className="text-[#2D5A3E] font-bold">{log.new_state}</span>
                   </td>
-                  <td className="py-2.5 px-3 font-sans text-[#6B655E] font-medium">{log.approved_by}</td>
                 </tr>
               ))}
             </tbody>

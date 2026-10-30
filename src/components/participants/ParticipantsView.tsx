@@ -289,6 +289,10 @@ export const ParticipantsView: React.FC = () => {
                       const s = externalStays.find((item) => item.id === alloc.external_stay_id);
                       roomName = `${s?.name.split('(')[0] || 'Stay'} (Rm ${alloc.room_number})`;
                     }
+                  } else if ((p as any).room_id) {
+                    roomName = `Hostel (${(p as any).room_id})`;
+                  } else if ((p as any).property_id) {
+                    roomName = `Hotel (${(p as any).property_id})`;
                   }
 
                   return (
@@ -306,8 +310,8 @@ export const ParticipantsView: React.FC = () => {
 
                       {/* Delegation */}
                       <td className="py-3.5 px-4">
-                        <p className="font-semibold text-[#1A1A1A]">{cnt?.name || 'Independent'}</p>
-                        <p className="text-[10px] text-[#6B655E] truncate max-w-xs">{cnt?.college}</p>
+                        <p className="font-semibold text-[#1A1A1A]">{(p as any).contingent_name || cnt?.name || 'Independent'}</p>
+                        <p className="text-[10px] text-[#6B655E] truncate max-w-xs">{(p as any).college || cnt?.college}</p>
                       </td>
 
                       {/* Contact Info */}
@@ -325,7 +329,7 @@ export const ParticipantsView: React.FC = () => {
                       {/* Dietary & Accessibility Flags */}
                       <td className="py-3.5 px-4">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          {p.dietary_requirements !== 'none' && (
+                          {p.dietary_requirements && p.dietary_requirements !== 'none' && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#EAF3EC] text-[#2D5A3E] border border-[#C7E2CE]">
                               {p.dietary_requirements}
                             </span>
@@ -351,7 +355,7 @@ export const ParticipantsView: React.FC = () => {
                         <div className="flex items-center gap-1.5">
                           <span
                             className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                              alloc
+                              alloc || (p as any).room_id || (p as any).property_id
                                 ? isOverride
                                   ? 'bg-[#FAF0E4] text-[#7A4E1D] border border-[#EED5BC]'
                                   : 'bg-[#FAF8F5] text-[#1A1A1A] border border-[#E5DFD3]'
@@ -371,7 +375,20 @@ export const ParticipantsView: React.FC = () => {
                       {/* Check-In */}
                       <td className="py-3.5 px-4 text-center">
                         <button
-                          onClick={() => toggleCheckIn(p.id)}
+                          onClick={async () => {
+                            setPaginatedData((prev) =>
+                              prev.map((item) =>
+                                item.id === p.id
+                                  ? {
+                                      ...item,
+                                      checked_in: !item.checked_in,
+                                      checked_in_at: !item.checked_in ? new Date().toISOString() : null,
+                                    }
+                                  : item
+                              )
+                            );
+                            await toggleCheckIn(p.id);
+                          }}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 mx-auto active:scale-95 ${
                             p.checked_in
                               ? 'bg-[#EAF3EC] text-[#2D5A3E] border border-[#C7E2CE] hover:bg-[#d8edd9]'

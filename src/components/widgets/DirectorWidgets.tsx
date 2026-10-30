@@ -321,11 +321,12 @@ export const CrossDepartmentAlertsWidget: React.FC<WidgetProps> = ({ role }) => 
   );
 };
 
-// 5. Director Alerts Drilldown Widget
+// 5. Director Alerts Drilldown Widget (Fixed display & rich inspection)
 export const DirectorAlertsDrilldownWidget: React.FC<WidgetProps> = ({ role }) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [severityFilter, setSeverityFilter] = useState<string>('all');
 
   const fetchAlerts = async () => {
     try {
@@ -346,35 +347,117 @@ export const DirectorAlertsDrilldownWidget: React.FC<WidgetProps> = ({ role }) =
     return () => clearInterval(interval);
   }, [role]);
 
+  const filteredData = data.filter((alert: any) => {
+    if (severityFilter === 'all') return true;
+    return (alert.severity || '').toLowerCase() === severityFilter.toLowerCase();
+  });
+
+  const getSeverityStyle = (severity: string) => {
+    const s = (severity || '').toLowerCase();
+    if (s === 'critical') return 'bg-[#FAECEB] text-[#7C2D2A] border-[#F0C9C7]';
+    if (s === 'high') return 'bg-[#FAF0E4] text-[#7A4E1D] border-[#EED5BC]';
+    if (s === 'medium') return 'bg-[#EBF1F5] text-[#2B5661] border-[#CDE0E8]';
+    return 'bg-[#EAF3EC] text-[#2D5A3E] border-[#C7E2CE]';
+  };
+
+  const formatTitle = (alert: any) => {
+    if (alert.title) return alert.title;
+    if (alert.issue_type) {
+      return alert.issue_type
+        .split('_')
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
+    }
+    return `Operational Anomaly (${alert.id})`;
+  };
+
   return (
     <WidgetCard widgetId="director_alerts_drilldown" loading={loading} error={error}>
       <div className="space-y-3 text-xs">
-        <p className="text-xs text-[#6B655E] leading-relaxed">
-          Real-time incident feed and cross-department health metrics prioritized by severity for the Directorate.
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <p className="text-xs text-[#6B655E] leading-relaxed">
+            Real-time incident feed and cross-department health metrics prioritized by severity for the Directorate.
+          </p>
 
-        <div className="space-y-2 pt-1">
-          {data.length === 0 ? (
+          {/* Severity Filter Pills */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {['all', 'critical', 'high', 'medium'].map((sev) => {
+              const count = sev === 'all' 
+                ? data.length 
+                : data.filter((a: any) => (a.severity || '').toLowerCase() === sev).length;
+              return (
+                <button
+                  key={sev}
+                  onClick={() => setSeverityFilter(sev)}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                    severityFilter === sev
+                      ? 'bg-[#1A1A1A] text-white shadow-sm'
+                      : 'bg-white hover:bg-[#FAF8F5] text-[#6B655E] border border-[#E5DFD3]'
+                  }`}
+                >
+                  {sev} {count > 0 && `(${count})`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-2.5 pt-1 max-h-[360px] overflow-y-auto pr-1">
+          {filteredData.length === 0 ? (
             <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5DFD3] text-center text-[#8F8982]">
-              <p className="font-serif font-bold text-xs text-[#1A1A1A]">No Critical Alerts Active</p>
-              <p className="text-[11px] mt-0.5">All department telemetry operating within normal parameters.</p>
+              <p className="font-serif font-bold text-xs text-[#1A1A1A]">No Matching Alerts</p>
+              <p className="text-[11px] mt-0.5">Telemetry reports 0 issues in the selected filter scope.</p>
             </div>
           ) : (
-            data.slice(0, 4).map((alert: any) => (
+            filteredData.map((alert: any) => (
               <div
                 key={alert.id}
-                className="p-3 rounded-lg border border-[#E5DFD3] bg-white flex items-start justify-between gap-3 shadow-sm"
+                className="p-3.5 rounded-xl border border-[#E5DFD3] bg-white flex flex-col gap-2 shadow-sm hover:border-[#D8D1C5] transition-all"
               >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase bg-[#FAECEB] text-[#7C2D2A] border border-[#F0C9C7]">
-                      {alert.severity || 'HIGH'}
+                {/* Header row: Severity, Title, ID & Source file */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase border ${getSeverityStyle(
+                        alert.severity
+                      )}`}
+                    >
+                      {alert.severity || 'NOTICE'}
                     </span>
-                    <span className="font-serif font-bold text-[#1A1A1A] truncate">{alert.title}</span>
+                    <span className="font-serif font-bold text-sm text-[#1A1A1A]">
+                      {formatTitle(alert)}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-[#6B655E] leading-relaxed">{alert.detail}</p>
+
+                  <div className="flex items-center gap-1.5 shrink-0 text-[10px] font-mono text-[#8F8982]">
+                    <span className="px-1.5 py-0.2 rounded bg-[#FAF8F5] border border-[#E5DFD3] font-bold text-[#1A1A1A]">
+                      {alert.id}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-[10px] font-mono text-[#8F8982] shrink-0">{alert.timestamp}</span>
+
+                {/* Description */}
+                <p className="text-xs text-[#4A4540] leading-relaxed">
+                  {alert.description || alert.detail || 'Operational variance requiring director review.'}
+                </p>
+
+                {/* Footer: Suggested Action & File location */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-[#EFEBE3] text-[11px]">
+                  {alert.suggested_action ? (
+                    <div className="flex items-center gap-1.5 text-[#7A4E1D] font-medium">
+                      <span className="font-bold text-[10px] uppercase tracking-wider text-[#A3703F]">Recommended:</span>
+                      <span className="line-clamp-1">{alert.suggested_action}</span>
+                    </div>
+                  ) : (
+                    <span className="text-[#8F8982] text-[10px]">No specific action required</span>
+                  )}
+
+                  {alert.file && (
+                    <span className="text-[10px] font-mono text-[#8F8982] shrink-0">
+                      {alert.file} {alert.row_number ? `· row ${alert.row_number}` : ''} {alert.field ? `(${alert.field})` : ''}
+                    </span>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -424,4 +507,3 @@ export const FestivalTimelineHealthWidget: React.FC<WidgetProps> = ({ role }) =>
     </WidgetCard>
   );
 };
-

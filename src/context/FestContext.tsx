@@ -182,6 +182,43 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!supabase || !isSupabaseConfigured()) {
       setIsUsingRemoteSupabase(false);
       setIsLiveConnected(true);
+
+      // Local API telemetry sync (reads from PGlite database)
+      try {
+        const [contingentsRes, kpiRes] = await Promise.all([
+          fetch('/api/participants?type=contingents').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/widgets/data?widgetId=master_kpi_bar&role=director').then((r) =>
+            r.ok ? r.json() : null
+          ),
+        ]);
+
+        if (contingentsRes && contingentsRes.success && Array.isArray(contingentsRes.data)) {
+          const mappedContingents: Contingent[] = contingentsRes.data.map((c: any) => ({
+            id: c.id,
+            name: c.name || c.college,
+            college: c.college,
+            city: c.college ? c.college.split(' ')[0] : 'Indore',
+            leader_name: c.leader_name || 'N/A',
+            escort_name: c.escort_name || 'N/A',
+            total_members: Number(c.total_members) || 0,
+            checked_in_members: Number(c.checked_in_count) || 0,
+            rooms_allocated: Math.ceil((Number(c.total_members) || 1) / 2),
+            status: Number(c.checked_in_count) > 0 ? 'arrived' : 'expected',
+            preferences: c.preferences || '',
+          }));
+          setContingents(mappedContingents);
+          setContingentsCount(mappedContingents.length);
+        }
+
+        if (kpiRes && kpiRes.success && kpiRes.data) {
+          if (kpiRes.data.totalRegistered) setParticipantsCount(kpiRes.data.totalRegistered);
+          if (kpiRes.data.checkedIn !== undefined) setCheckedInCount(kpiRes.data.checkedIn);
+        }
+
+        setLastSyncTime(formatISTTimeWithSeconds(new Date().toISOString()));
+      } catch (err) {
+        console.warn('FestOS local telemetry sync fallback:', err);
+      }
       return;
     }
 
@@ -307,6 +344,30 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
     accessibility?: boolean;
     checkedIn?: string;
   }) => {
+    // 1. Primary: Query the real database (PGlite) via /api/participants
+    try {
+      const qParams = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        search: search.trim(),
+        contingentId,
+        dietary,
+        accessibility: accessibility ? 'true' : 'false',
+        checkedIn,
+      });
+
+      const res = await fetch(`/api/participants?${qParams.toString()}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          return { data: json.data, totalCount: json.totalCount };
+        }
+      }
+    } catch (e) {
+      console.warn('API participants query fallback:', e);
+    }
+
+    // 2. Secondary fallback: Cloud Supabase if configured
     const supabase = getSupabaseClient();
     if (supabase && isSupabaseConfigured()) {
       try {
@@ -684,6 +745,16 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     setCheckedInCount((prev) => (nextStatus ? prev + 1 : Math.max(0, prev - 1)));
+
+    try {
+      await fetch('/api/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participantId, desk: 'Directorate Desk' }),
+      });
+    } catch (e) {
+      // Local network fallback
+    }
 
     const supabase = getSupabaseClient();
     if (supabase && isSupabaseConfigured()) {

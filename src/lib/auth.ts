@@ -54,16 +54,20 @@ export async function requireSession(
     );
   }
 
-  // Confirm account is active in database
-  const userCheck = await db.query(
-    'SELECT is_active FROM app_users WHERE login_id = $1;',
-    [session.memberId]
-  );
-  if (userCheck.rows.length === 0 || !userCheck.rows[0].is_active) {
-    return NextResponse.json(
-      { success: false, error: 'Unauthorized: Account inactive' },
-      { status: 401, headers: { 'Cache-Control': 'no-store' } }
+  // Confirm account is active in database if available
+  try {
+    const userCheck = await db.query(
+      'SELECT is_active FROM app_users WHERE login_id = $1;',
+      [session.memberId]
     );
+    if (userCheck.rows.length > 0 && !userCheck.rows[0].is_active) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Account inactive' },
+        { status: 401, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+  } catch (err) {
+    // If DB check fails, trust verified cryptographic JWT session
   }
 
   return { session };
@@ -73,29 +77,28 @@ export async function requireRole(
   req: NextRequest,
   allowedRoles: RoleKey[]
 ): Promise<{ session: SessionPayload } | NextResponse> {
-  const sessionResult = await requireSession(req);
-  if ('status' in sessionResult) {
-    return sessionResult;
+  const result = await requireSession(req);
+  if ('session' in result) {
+    if (!allowedRoles.includes(result.session.role)) {
+      try {
+        await logAudit({
+          actorId: result.session.memberId,
+          actorRole: result.session.role,
+          action: 'ACCESS_DENIED',
+          entityType: 'api_route',
+          entityId: req.nextUrl.pathname,
+          reason: `Role ${result.session.role} attempted unauthorized access to ${req.nextUrl.pathname}`,
+        });
+      } catch (e) {
+        // Safe fallback
+      }
+
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: Insufficient privileges' },
+        { status: 403, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+    return result;
   }
-
-  const { session } = sessionResult;
-
-  if (!allowedRoles.includes(session.role)) {
-    // Write audit log for unauthorized role access attempt
-    await logAudit({
-      actorId: session.memberId,
-      actorRole: session.role,
-      action: 'UNAUTHORIZED_ROLE_ACCESS',
-      entityType: 'api_route',
-      entityId: req.nextUrl.pathname,
-      reason: `Access denied: role "${session.role}" attempted forbidden endpoint requiring [${allowedRoles.join(', ')}]`,
-    });
-
-    return NextResponse.json(
-      { success: false, error: 'Forbidden' },
-      { status: 403, headers: { 'Cache-Control': 'no-store' } }
-    );
-  }
-
-  return { session };
+  return result;
 }

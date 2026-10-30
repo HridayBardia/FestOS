@@ -91,11 +91,11 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
               <span>Auto-Allocate</span>
             </button>
             <button
-              onClick={onOpenDisruptions}
+              onClick={() => onNavigateTab('disruptions')}
               className="px-4 py-2.5 rounded-xl bg-[#A3703F] hover:bg-[#8C6D36] text-white text-xs font-bold shadow-md shadow-[#A3703F]/20 transition-all flex items-center gap-2 active:scale-95"
             >
               <Flame className="w-4 h-4 text-[#F6EFE6]" />
-              <span>Jury Injections</span>
+              <span>Disruption Harness</span>
             </button>
           </div>
         </div>
