@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import { db, logAudit } from '@/lib/db';
 import { signSession, SESSION_COOKIE_NAME } from '@/lib/auth';
 import { RoleKey, ROLES } from '@/config/roles';
+import { CANONICAL_DATASET } from '@/lib/canonicalData';
 
 // Dummy bcrypt hash for constant-time comparison on unknown user IDs
 const DUMMY_HASH = '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW';
@@ -27,6 +28,18 @@ function mapCoreRole(rawRole: string): RoleKey {
 
 function getCoreTeamMemberFromCsv(memberId: string) {
   try {
+    const list = CANONICAL_DATASET.core_team || [];
+    const found = list.find((m: any) => (m.member_id || '').toUpperCase().trim() === memberId.toUpperCase().trim());
+    if (found) {
+      return {
+        memberId: found.member_id.toUpperCase().trim(),
+        name: found.name || 'Core Team Member',
+        role: mapCoreRole(found.role),
+        shift: found.shift || '09:00-17:00',
+        phone: found.phone || '',
+      };
+    }
+
     const csvPath = path.resolve(process.cwd(), 'data', 'full_dataset', 'core_team.csv');
     if (!fs.existsSync(csvPath)) return null;
     const content = fs.readFileSync(csvPath, 'utf8');
@@ -44,7 +57,7 @@ function getCoreTeamMemberFromCsv(memberId: string) {
       }
     }
   } catch (err) {
-    console.warn('Could not read core_team.csv fallback:', err);
+    console.warn('Could not read core team catalog fallback:', err);
   }
   return null;
 }
@@ -101,7 +114,14 @@ export async function POST(req: NextRequest) {
           { status: 401, headers: { 'Cache-Control': 'no-store' } }
         );
       }
-      const match = await bcrypt.compare(password, userFromDb.password_hash);
+      let match = false;
+      if (typeof userFromDb.password_hash === 'string' && userFromDb.password_hash.startsWith('$2')) {
+        try {
+          match = await bcrypt.compare(password, userFromDb.password_hash);
+        } catch {
+          match = false;
+        }
+      }
       const defaultPassword = process.env.DEFAULT_PASSWORD || '12345678';
       if (!match && password !== defaultPassword) {
         return NextResponse.json(

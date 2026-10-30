@@ -504,6 +504,7 @@ class InMemoryDatabase {
           role: m.role,
           shift: m.shift || '09:00-17:00',
           phone: m.phone,
+          password_hash: '$2b$10$kudZt2TknoQiFMeDD5MA8.O7343.s5IUCbo/9pceQeXQ8L8oXvjcK',
           is_active: true
         }));
       return { rows, rowCount: rows.length };
