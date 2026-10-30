@@ -42,8 +42,6 @@ export const ScheduleTimelineWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -100,8 +98,6 @@ export const VenueStatusBoardWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -150,8 +146,6 @@ export const ClashAlertFeedWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   const participantClashes = data?.participantClashes || [];
@@ -357,8 +351,6 @@ export const VolunteerDeploymentWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (

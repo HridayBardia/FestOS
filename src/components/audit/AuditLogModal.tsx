@@ -35,8 +35,6 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
   useEffect(() => {
     if (isOpen) {
       fetchSharedLogs();
-      const interval = setInterval(fetchSharedLogs, 8000);
-      return () => clearInterval(interval);
     }
   }, [isOpen]);
 

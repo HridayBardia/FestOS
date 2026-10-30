@@ -51,7 +51,7 @@ interface FestContextType {
   coreTeam: CoreTeamMember[];
   auditLogs: OverrideAuditLog[];
   clashes: ClashAlert[];
-  
+
   participantsCount: number;
   checkedInCount: number;
   auditCount: number;
@@ -61,7 +61,7 @@ interface FestContextType {
   isUsingRemoteSupabase: boolean;
   lastSyncTime: string;
   activeDisruptions: string[];
-  
+
   allocateRoom: (
     participantId: string,
     hostelId: string,
@@ -71,7 +71,7 @@ interface FestContextType {
     overrideReason?: string,
     approvedBy?: string
   ) => Promise<{ success: boolean; error?: string }>;
-  
+
   allocateExternalStay: (
     participantId: string,
     externalStayId: string,
@@ -80,7 +80,7 @@ interface FestContextType {
     reason: string,
     approvedBy: string
   ) => Promise<{ success: boolean; error?: string }>;
-  
+
   deallocateParticipant: (participantId: string, reason?: string) => Promise<void>;
   toggleCheckIn: (participantId: string) => Promise<void>;
   updateEventVenue: (eventId: string, newVenueId: string, reason: string, approvedBy: string) => Promise<void>;
@@ -92,7 +92,7 @@ interface FestContextType {
   autoAllocateAll: () => { allocatedCount: number; violationsCount: number };
   refreshData: () => Promise<void>;
   connectSupabase: (url: string, key: string) => Promise<boolean>;
-  
+
   fetchParticipantsPage: (params: {
     page: number;
     pageSize: number;
@@ -123,7 +123,7 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [coreTeam, setCoreTeam] = useState<CoreTeamMember[]>(INITIAL_CORE_TEAM);
   const [auditLogs, setAuditLogs] = useState<OverrideAuditLog[]>(INITIAL_AUDIT_LOGS);
   const [activeDisruptions, setActiveDisruptions] = useState<string[]>([]);
-  
+
   const [participantsCount, setParticipantsCount] = useState<number>(2836);
   const [checkedInCount, setCheckedInCount] = useState<number>(1420);
   const [auditCount, setAuditCount] = useState<number>(INITIAL_AUDIT_LOGS.length);
@@ -131,7 +131,7 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [isLiveConnected, setIsLiveConnected] = useState<boolean>(false);
   const [isUsingRemoteSupabase, setIsUsingRemoteSupabase] = useState<boolean>(false);
-  
+
   // Deterministic initial value to prevent SSR/Hydration mismatch
   const [lastSyncTime, setLastSyncTime] = useState<string>('11:32:00 AM');
 
@@ -185,12 +185,22 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Local API telemetry sync (reads from PGlite database)
       try {
-        const [contingentsRes, kpiRes] = await Promise.all([
+        const [contingentsRes, kpiRes, scheduleRes] = await Promise.all([
           fetch('/api/participants?type=contingents').then((r) => (r.ok ? r.json() : null)),
           fetch('/api/widgets/data?widgetId=master_kpi_bar&role=director').then((r) =>
             r.ok ? r.json() : null
           ),
+          fetch('/api/schedule').then((r) => (r.ok ? r.json() : null)),
         ]);
+
+        if (scheduleRes && scheduleRes.success) {
+          if (Array.isArray(scheduleRes.venues) && scheduleRes.venues.length > 0) {
+            setVenues(scheduleRes.venues);
+          }
+          if (Array.isArray(scheduleRes.events) && scheduleRes.events.length > 0) {
+            setEvents(scheduleRes.events);
+          }
+        }
 
         if (contingentsRes && contingentsRes.success && Array.isArray(contingentsRes.data)) {
           const mappedContingents: Contingent[] = contingentsRes.data.map((c: any) => ({
@@ -777,6 +787,21 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setEvents((prev) =>
       prev.map((e) => (e.id === eventId ? { ...e, venue_id: newVenueId, status: 'venue_shifted' as const } : e))
     );
+
+    try {
+      await fetch('/api/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId,
+          newVenueId,
+          reason,
+          authorizedBy: approvedBy,
+        }),
+      });
+    } catch (e) {
+      // Local fallback
+    }
 
     const supabase = getSupabaseClient();
     if (supabase && isSupabaseConfigured()) {

@@ -504,159 +504,49 @@ export const INITIAL_ALLOCATIONS: AccommodationAllocation[] = [
 ];
 
 export const INITIAL_VENUES: Venue[] = [
-  {
-    id: 'ven-01',
-    name: 'Central Auditorium',
-    code: 'AUDI-MAIN',
-    capacity: 1200,
-    type: 'auditorium',
-    has_projector: true,
-    has_sound_system: true,
-    has_ac: true,
-    status: 'available'
-  },
-  {
-    id: 'ven-02',
-    name: 'Chanakya Hall',
-    code: 'CH-HALL',
-    capacity: 400,
-    type: 'auditorium',
-    has_projector: true,
-    has_sound_system: true,
-    has_ac: true,
-    status: 'occupied'
-  },
-  {
-    id: 'ven-03',
-    name: 'MDP Amphitheatre',
-    code: 'AMPHI-OPEN',
-    capacity: 650,
-    type: 'amphitheatre',
-    has_projector: false,
-    has_sound_system: true,
-    has_ac: false,
-    status: 'available'
-  },
-  {
-    id: 'ven-04',
-    name: 'Sports Complex Indoor Arena',
-    code: 'SPORTS-INDOOR',
-    capacity: 800,
-    type: 'ground',
-    has_projector: false,
-    has_sound_system: true,
-    has_ac: true,
-    status: 'available'
-  },
-  {
-    id: 'ven-05',
-    name: 'Classroom Block CR-101',
-    code: 'CR-101',
-    capacity: 120,
-    type: 'classroom',
-    has_projector: true,
-    has_sound_system: true,
-    has_ac: true,
-    status: 'available'
-  },
-  {
-    id: 'ven-06',
-    name: 'Boardroom Alpha',
-    code: 'BR-ALPHA',
-    capacity: 45,
-    type: 'boardroom',
-    has_projector: true,
-    has_sound_system: true,
-    has_ac: true,
-    status: 'available'
-  }
+  { id: 'V01', name: 'Main Stage', code: 'V01', capacity: 60, type: 'auditorium', has_projector: false, has_sound_system: true, has_ac: true, status: 'available' },
+  { id: 'V02', name: 'LT-1', code: 'V02', capacity: 150, type: 'classroom', has_projector: true, has_sound_system: true, has_ac: true, status: 'available' },
+  { id: 'V03', name: 'LT-2', code: 'V03', capacity: 150, type: 'classroom', has_projector: true, has_sound_system: true, has_ac: true, status: 'available' },
+  { id: 'V04', name: 'Amphitheatre', code: 'V04', capacity: 250, type: 'amphitheatre', has_projector: true, has_sound_system: true, has_ac: false, status: 'available' },
+  { id: 'V05', name: 'Quadrangle', code: 'V05', capacity: 100, type: 'ground', has_projector: false, has_sound_system: true, has_ac: false, status: 'available' },
+  { id: 'V06', name: 'Hostel Lawn', code: 'V06', capacity: 100, type: 'ground', has_projector: false, has_sound_system: true, has_ac: false, status: 'available' },
+  { id: 'V07', name: 'Seminar Hall', code: 'V07', capacity: 60, type: 'auditorium', has_projector: true, has_sound_system: true, has_ac: true, status: 'available' },
+  { id: 'V08', name: 'Sports Complex', code: 'V08', capacity: 100, type: 'ground', has_projector: false, has_sound_system: true, has_ac: true, status: 'available' },
+  { id: 'V09', name: 'Library Hall', code: 'V09', capacity: 60, type: 'auditorium', has_projector: true, has_sound_system: true, has_ac: true, status: 'available' }
 ];
 
 export const INITIAL_EVENTS: EventItem[] = [
-  {
-    id: 'evt-01',
-    title: 'The Aarohan Flagship: Boardroom Blitz',
-    category: 'flagship',
-    venue_id: 'ven-02',
-    start_time: '2026-10-30T14:00:00+05:30',
-    end_time: '2026-10-30T17:30:00+05:30',
-    min_team_size: 3,
-    max_team_size: 4,
-    capacity_limit: 150,
-    status: 'scheduled',
-    registered_participants_count: 142,
-    equipment_needed: ['Wireless Mics x4', 'Presentation Clicker', 'Podium']
-  },
-  {
-    id: 'evt-02',
-    title: 'Ranbhoomi National Parliamentary Debate',
-    category: 'cultural',
-    venue_id: 'ven-05',
-    start_time: '2026-10-30T15:00:00+05:30',
-    end_time: '2026-10-30T18:30:00+05:30',
-    min_team_size: 2,
-    max_team_size: 3,
-    capacity_limit: 110,
-    status: 'scheduled',
-    registered_participants_count: 86,
-    equipment_needed: ['Timer Bell', 'Floor Mics x2']
-  },
-  {
-    id: 'evt-03',
-    title: 'BeatTheStreet Algorithmic Trading Marathon',
-    category: 'management',
-    venue_id: 'ven-06',
-    start_time: '2026-10-30T14:30:00+05:30',
-    end_time: '2026-10-30T17:00:00+05:30',
-    min_team_size: 1,
-    max_team_size: 2,
-    capacity_limit: 40,
-    status: 'scheduled',
-    registered_participants_count: 38,
-    equipment_needed: ['Bloomberg Terminals', 'Gigabit Switch', 'LAN cables']
-  },
-  {
-    id: 'evt-04',
-    title: 'Executive Leadership Keynote (Surprise Slot)',
-    category: 'flagship',
-    venue_id: 'ven-02', // INTENTIONAL CLASH with evt-01 for detector demo
-    start_time: '2026-10-30T16:30:00+05:30',
-    end_time: '2026-10-30T18:00:00+05:30',
-    min_team_size: 1,
-    max_team_size: 1,
-    capacity_limit: 380,
-    status: 'scheduled',
-    registered_participants_count: 310,
-    equipment_needed: ['Stage Lighting', 'Teleprompter']
-  },
-  {
-    id: 'evt-05',
-    title: 'Ahilya Pro-Night: Ritviz Live & EDM Fest',
-    category: 'cultural',
-    venue_id: 'ven-03',
-    start_time: '2026-10-30T20:00:00+05:30',
-    end_time: '2026-10-30T23:45:00+05:30',
-    min_team_size: 1,
-    max_team_size: 10,
-    capacity_limit: 650,
-    status: 'scheduled',
-    registered_participants_count: 620,
-    equipment_needed: ['JBL Line Array x12', 'Laser Scanners', 'Stage Pyrotechnics']
-  },
-  {
-    id: 'evt-06',
-    title: 'SmashPoint Inter-B-School Badminton Clash',
-    category: 'sports',
-    venue_id: 'ven-04',
-    start_time: '2026-10-31T09:00:00+05:30',
-    end_time: '2026-10-31T13:00:00+05:30',
-    min_team_size: 2,
-    max_team_size: 4,
-    capacity_limit: 200,
-    status: 'scheduled',
-    registered_participants_count: 64,
-    equipment_needed: ['Yonex Nets', 'Referee Chairs']
-  }
+  { id: 'E01', title: 'Aarohan', category: 'solo', venue_id: 'V01', start_time: '2026-10-30T09:00:00.000Z', end_time: '2026-10-30T10:30:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 60, status: 'scheduled' },
+  { id: 'E02', title: 'Pitch Perfect', category: 'solo', venue_id: 'V02', start_time: '2026-10-30T09:00:00.000Z', end_time: '2026-10-30T09:45:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 150, status: 'scheduled' },
+  { id: 'E03', title: 'Case Clash', category: 'team', venue_id: 'V04', start_time: '2026-10-30T09:00:00.000Z', end_time: '2026-10-30T11:00:00.000Z', min_team_size: 1, max_team_size: 4, capacity_limit: 250, status: 'scheduled' },
+  { id: 'E04', title: 'Biz Quiz', category: 'solo', venue_id: 'V02', start_time: '2026-10-30T10:00:00.000Z', end_time: '2026-10-30T12:00:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 150, status: 'scheduled' },
+  { id: 'E05', title: 'Battle of Bands', category: 'solo', venue_id: 'V03', start_time: '2026-10-30T09:00:00.000Z', end_time: '2026-10-30T11:00:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 150, status: 'scheduled' },
+  { id: 'E06', title: 'Street Play', category: 'team', venue_id: 'V05', start_time: '2026-10-30T09:00:00.000Z', end_time: '2026-10-30T09:45:00.000Z', min_team_size: 1, max_team_size: 4, capacity_limit: 100, status: 'scheduled' },
+  { id: 'E07', title: 'Nukkad Natak', category: 'solo', venue_id: 'V06', start_time: '2026-10-30T09:00:00.000Z', end_time: '2026-10-30T09:45:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 100, status: 'scheduled' },
+  { id: 'E08', title: 'Treasure Hunt', category: 'solo', venue_id: 'V07', start_time: '2026-10-30T09:00:00.000Z', end_time: '2026-10-30T09:45:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 60, status: 'scheduled' },
+  { id: 'E09', title: 'Code Relay', category: 'team', venue_id: 'V08', start_time: '2026-10-30T09:00:00.000Z', end_time: '2026-10-30T11:00:00.000Z', min_team_size: 1, max_team_size: 4, capacity_limit: 100, status: 'scheduled' },
+  { id: 'E10', title: 'Design Sprint', category: 'solo', venue_id: 'V09', start_time: '2026-10-30T09:00:00.000Z', end_time: '2026-10-30T09:45:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 60, status: 'scheduled' },
+  { id: 'E11', title: 'Debate', category: 'solo', venue_id: 'V03', start_time: '2026-10-30T11:30:00.000Z', end_time: '2026-10-30T12:30:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 150, status: 'scheduled' },
+  { id: 'E12', title: 'MUN', category: 'team', venue_id: 'V05', start_time: '2026-10-30T10:15:00.000Z', end_time: '2026-10-30T12:15:00.000Z', min_team_size: 1, max_team_size: 4, capacity_limit: 100, status: 'scheduled' },
+  { id: 'E13', title: 'Poetry Slam', category: 'solo', venue_id: 'V06', start_time: '2026-10-30T10:15:00.000Z', end_time: '2026-10-30T12:15:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 100, status: 'scheduled' },
+  { id: 'E14', title: 'Stand-up', category: 'solo', venue_id: 'V07', start_time: '2026-10-30T10:15:00.000Z', end_time: '2026-10-30T12:15:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 60, status: 'scheduled' },
+  { id: 'E15', title: 'Photography Walk', category: 'team', venue_id: 'V08', start_time: '2026-10-30T11:30:00.000Z', end_time: '2026-10-30T13:30:00.000Z', min_team_size: 1, max_team_size: 4, capacity_limit: 100, status: 'scheduled' },
+  { id: 'E16', title: 'Short Film', category: 'solo', venue_id: 'V09', start_time: '2026-10-30T10:15:00.000Z', end_time: '2026-10-30T11:45:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 60, status: 'scheduled' },
+  { id: 'E17', title: 'Ad-Mad', category: 'solo', venue_id: 'V01', start_time: '2026-10-30T11:00:00.000Z', end_time: '2026-10-30T13:00:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 60, status: 'scheduled' },
+  { id: 'E18', title: 'Stock Wars', category: 'team', venue_id: 'V04', start_time: '2026-10-30T11:30:00.000Z', end_time: '2026-10-30T13:00:00.000Z', min_team_size: 1, max_team_size: 4, capacity_limit: 250, status: 'scheduled' },
+  { id: 'E19', title: 'IPL Auction', category: 'solo', venue_id: 'V02', start_time: '2026-10-30T12:30:00.000Z', end_time: '2026-10-30T13:30:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 150, status: 'scheduled' },
+  { id: 'E20', title: 'Dance Face-off', category: 'solo', venue_id: 'V05', start_time: '2026-10-30T12:45:00.000Z', end_time: '2026-10-30T13:45:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 100, status: 'scheduled' },
+  { id: 'E21', title: 'Fashion Show', category: 'team', venue_id: 'V01', start_time: '2026-10-30T13:30:00.000Z', end_time: '2026-10-30T14:30:00.000Z', min_team_size: 1, max_team_size: 4, capacity_limit: 60, status: 'scheduled' },
+  { id: 'E22', title: 'Open Mic', category: 'solo', venue_id: 'V06', start_time: '2026-10-30T12:45:00.000Z', end_time: '2026-10-30T14:45:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 100, status: 'scheduled' },
+  { id: 'E23', title: 'Chess', category: 'solo', venue_id: 'V07', start_time: '2026-10-30T12:45:00.000Z', end_time: '2026-10-30T14:45:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 60, status: 'scheduled' },
+  { id: 'E24', title: 'Futsal', category: 'team', venue_id: 'V08', start_time: '2026-10-30T14:00:00.000Z', end_time: '2026-10-30T15:30:00.000Z', min_team_size: 1, max_team_size: 4, capacity_limit: 100, status: 'scheduled' },
+  { id: 'E25', title: 'Basketball', category: 'solo', venue_id: 'V08', start_time: '2026-10-30T16:00:00.000Z', end_time: '2026-10-30T17:00:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 100, status: 'scheduled' },
+  { id: 'E26', title: 'Badminton', category: 'solo', venue_id: 'V09', start_time: '2026-10-30T12:15:00.000Z', end_time: '2026-10-30T14:15:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 60, status: 'scheduled' },
+  { id: 'E27', title: 'Table Tennis', category: 'team', venue_id: 'V09', start_time: '2026-10-30T14:45:00.000Z', end_time: '2026-10-30T16:45:00.000Z', min_team_size: 1, max_team_size: 4, capacity_limit: 60, status: 'scheduled' },
+  { id: 'E28', title: 'Robo Race', category: 'solo', venue_id: 'V04', start_time: '2026-10-30T13:30:00.000Z', end_time: '2026-10-30T15:30:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 250, status: 'scheduled' },
+  { id: 'E29', title: 'Treasure Trivia', category: 'solo', venue_id: 'V02', start_time: '2026-10-30T14:00:00.000Z', end_time: '2026-10-30T14:45:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 150, status: 'scheduled' },
+  { id: 'E30', title: 'Startup Showcase', category: 'team', venue_id: 'V04', start_time: '2026-10-30T16:00:00.000Z', end_time: '2026-10-30T18:00:00.000Z', min_team_size: 1, max_team_size: 4, capacity_limit: 250, status: 'scheduled' },
+  { id: 'E31', title: 'Grand Finale', category: 'solo', venue_id: 'V04', start_time: '2026-10-31T18:00:00.000Z', end_time: '2026-10-31T20:00:00.000Z', min_team_size: 1, max_team_size: 1, capacity_limit: 250, status: 'scheduled' }
 ];
 
 export const INITIAL_REGISTRATIONS: Registration[] = [
@@ -808,7 +698,7 @@ export const INITIAL_LOGISTICS: InventoryLogistics[] = [
     total_quantity: 600,
     in_use_quantity: 450,
     available_quantity: 150,
-    location: 'Chanakya Storage Cell',
+    location: 'Main Stage AV Depot',
     condition: 'optimal'
   },
   {

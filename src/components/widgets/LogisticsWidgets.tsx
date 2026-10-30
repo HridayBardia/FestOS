@@ -39,8 +39,6 @@ export const InventoryStatusWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -87,8 +85,6 @@ export const EquipmentByVenueWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -133,8 +129,6 @@ export const ShortagesAndClashesWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -183,8 +177,6 @@ export const MoveRequestQueueWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (

@@ -40,8 +40,6 @@ export const StockBySizeWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -198,8 +196,6 @@ export const DuplicateClaimDetectorWidget: React.FC<WidgetProps> = ({ role }) =>
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -349,8 +345,6 @@ export const ContingentBulkPickupWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (

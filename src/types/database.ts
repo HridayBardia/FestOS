@@ -2,11 +2,11 @@ export type Gender = 'male' | 'female' | 'other';
 export type DietaryRequirement = 'none' | 'veg' | 'jain' | 'vegan' | 'halal';
 export type ContingentStatus = 'expected' | 'arrived' | 'delayed' | 'checked_out';
 export type FacilityStatus = 'operational' | 'closed' | 'maintenance' | 'standby' | 'active' | 'full';
-export type EventCategory = 'flagship' | 'cultural' | 'management' | 'sports' | 'informal';
+export type EventCategory = 'flagship' | 'cultural' | 'management' | 'sports' | 'informal' | 'solo' | 'team';
 export type EventStatus = 'scheduled' | 'delayed' | 'ongoing' | 'completed' | 'venue_shifted' | 'cancelled';
 export type VenueStatus = 'available' | 'occupied' | 'maintenance' | 'compromised';
 export type VendorStatus = 'compliant' | 'warning' | 'breached';
-export type ActionType = 
+export type ActionType =
   | 'accommodation_override'
   | 'hostel_closure'
   | 'venue_shift'

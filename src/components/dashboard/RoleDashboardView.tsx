@@ -4,7 +4,7 @@
 // Role-specific operational control dashboard
 // Zero em dashes or en dashes in any UI copy or code
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { RoleKey, ROLES } from '@/config/roles';
 import { ROLE_DASHBOARDS } from '@/config/dashboards';
 import { WidgetRegistry } from '@/components/widgets/WidgetRegistry';
@@ -25,13 +25,6 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({ currentRol
     setRefreshKey((k) => k + 1);
     setTimeout(() => setIsRefreshing(false), 500);
   };
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setRefreshKey((k) => k + 1);
-    }, 20000);
-    return () => clearInterval(timer);
-  }, []);
 
   return (
     <div className="space-y-6">
@@ -66,7 +59,7 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({ currentRol
               onClick={triggerRefresh}
               disabled={isRefreshing}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#E5DFD3] bg-[#FAF8F5] hover:bg-[#F6EFE6] text-[#6B655E] transition-colors text-xs font-semibold shadow-sm"
-              title="Refresh widget telemetry"
+              title="Manual telemetry refresh"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#A3703F]' : ''}`} />
               <span>Refresh</span>
@@ -75,17 +68,17 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({ currentRol
         </div>
       </div>
 
-      {/* Widget Grid Layout */}
-      <div key={refreshKey} className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {widgetIds.map((wId) => (
-          <WidgetRegistry
-            key={wId}
-            widgetId={wId}
-            role={currentRole}
-            onRefreshTrigger={triggerRefresh}
-          />
-        ))}
+        {/* Stable Widget Grid Layout - No automatic DOM teardown/remount */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {widgetIds.map((wId) => (
+            <WidgetRegistry
+              key={`${wId}-${refreshKey}`}
+              widgetId={wId}
+              role={currentRole}
+              onRefreshTrigger={triggerRefresh}
+            />
+          ))}
+        </div>
       </div>
-    </div>
-  );
+      );
 };

@@ -14,7 +14,6 @@ import { ScheduleClashView } from '@/components/schedule/ScheduleClashView';
 import { LogisticsView } from '@/components/logistics/LogisticsView';
 import { DisruptionInjectorView } from '@/components/disruptions/DisruptionInjectorView';
 import { AuditLogModal } from '@/components/audit/AuditLogModal';
-import { RoleKey, PERMISSION_MATRIX } from '@/config/roles';
 import { SessionPayload } from '@/lib/jwt';
 
 interface PortalClientProps {
@@ -24,22 +23,17 @@ interface PortalClientProps {
 export const PortalClient: React.FC<PortalClientProps> = ({ session }) => {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
-  const [isDisruptionsModalOpen, setIsDisruptionsModalOpen] = useState<boolean>(false);
 
-  const permissions = PERMISSION_MATRIX[session.role] || PERMISSION_MATRIX.director;
+  const role = session.role;
+  const isDirector = role === 'director';
 
   const handleTabChange = (tab: string) => {
-    // Validate tab access against permission matrix
-    if (tab === 'accommodation' && permissions.accommodation === 'none') return;
-    if (tab === 'participants' && permissions.participants === 'none') return;
-    if (tab === 'schedule' && permissions.schedule === 'none') return;
-    if (
-      tab === 'logistics' &&
-      permissions.logistics === 'none' &&
-      permissions.vendors === 'none'
-    )
-      return;
-    if (tab === 'disruptions' && !permissions.disruptions) return;
+    // Strictly gate tab navigation to authorized department roles only
+    if (tab === 'accommodation' && !isDirector && role !== 'hospitality') return;
+    if (tab === 'participants' && !isDirector && role !== 'registration') return;
+    if (tab === 'schedule' && !isDirector && role !== 'events') return;
+    if (tab === 'logistics' && !isDirector && role !== 'logistics') return;
+    if (tab === 'disruptions' && !isDirector) return;
 
     setCurrentTab(tab);
   };
@@ -62,7 +56,7 @@ export const PortalClient: React.FC<PortalClientProps> = ({ session }) => {
           role={session.role}
           shift={session.shift}
           onOpenAuditLogs={() => setIsAuditModalOpen(true)}
-          onOpenDisruptions={() => setCurrentTab('disruptions')}
+          onOpenDisruptions={() => isDirector && setCurrentTab('disruptions')}
         />
 
         {/* Viewport Content */}
@@ -72,26 +66,25 @@ export const PortalClient: React.FC<PortalClientProps> = ({ session }) => {
               <RoleDashboardView currentRole={session.role} />
             )}
 
-            {currentTab === 'accommodation' && permissions.accommodation !== 'none' && (
-              <AccommodationView />
-            )}
-
-            {currentTab === 'participants' && permissions.participants !== 'none' && (
-              <ParticipantsView />
-            )}
-
-            {currentTab === 'schedule' && permissions.schedule !== 'none' && (
-              <ScheduleClashView />
-            )}
-
-            {currentTab === 'logistics' &&
-              (permissions.logistics !== 'none' || permissions.vendors !== 'none') && (
-                <LogisticsView />
+              { currentTab === 'accommodation' && (isDirector || role === 'hospitality') && (
+                <AccommodationView />
               )}
 
-            {currentTab === 'disruptions' && (
-              <DisruptionInjectorView />
+              { currentTab === 'participants' && (isDirector || role === 'registration') && (
+                <ParticipantsView />
+              )}
+
+              { currentTab === 'schedule' && (isDirector || role === 'events') && (
+                <ScheduleClashView />
+              )}
+
+            {currentTab === 'logistics' && (isDirector || role === 'logistics') && (
+              <LogisticsView />
             )}
+
+              { currentTab === 'disruptions' && isDirector && (
+                <DisruptionInjectorView />
+              )}
           </div>
         </main>
       </div>

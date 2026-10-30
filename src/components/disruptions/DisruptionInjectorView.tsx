@@ -85,19 +85,19 @@ export const DisruptionInjectorView: React.FC<DisruptionInjectorViewProps> = ({ 
         return [
           {
             id: 'evt-01',
-            title: 'Chanakya Hall Stage Lighting Transformer Failure',
+            title: 'Main Stage Stage Lighting Transformer Failure',
             category: 'Venue Infrastructure',
             severity: 'Critical',
             icon: CalendarDays,
-            description: 'Electrical transformer trip in Chanakya Hall. Relocates flagship competition to Central Auditorium immediately.',
+            description: 'Electrical transformer trip in Main Stage. Relocates flagship competition to LT-1 immediately.',
             action: async () => {
               await injectDisruption(
                 'VENUE_SHIFT',
-                { eventId: 'evt-05', newVenueId: 'ven-01' },
-                'Power surge and lighting transformer burnout in Chanakya Hall. Immediate emergency venue relocation authorized.',
+                { eventId: 'E01', newVenueId: 'V02' },
+                'Power surge and lighting transformer burnout in Main Stage. Immediate emergency venue relocation authorized.',
                 'Events Lead (Arjun Singh)'
               );
-              setStatusNotification('Boardroom Blitz relocated to Central Auditorium. Audit trail published.');
+              setStatusNotification('Aarohan relocated to LT-1. Audit trail published.');
             }
           }
         ];
@@ -166,16 +166,16 @@ export const DisruptionInjectorView: React.FC<DisruptionInjectorViewProps> = ({ 
           },
           {
             id: 'dir-02',
-            title: 'Chanakya Hall Electrical Transformer Burnout',
+            title: 'Main Stage Electrical Transformer Burnout',
             category: 'Venue Infrastructure',
             severity: 'Critical',
             icon: CalendarDays,
-            description: 'Stage lighting blackout. Reallocates flagship Boardroom Blitz to Central Auditorium.',
+            description: 'Stage lighting blackout. Reallocates flagship Aarohan to LT-1.',
             action: async () => {
               await injectDisruption(
                 'VENUE_SHIFT',
-                { eventId: 'evt-05', newVenueId: 'ven-01' },
-                'Electrical failure in Chanakya Hall. Shifted to Central Auditorium with live clash audit.',
+                { eventId: 'E01', newVenueId: 'V02' },
+                'Electrical failure in Main Stage. Shifted to LT-1 with live clash audit.',
                 'Festival Director (Naman Nair)'
               );
               setStatusNotification('Event venue shifted in real time across the portal.');

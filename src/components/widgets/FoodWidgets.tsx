@@ -40,8 +40,6 @@ export const MealHeadcountForecastWidget: React.FC<WidgetProps> = ({ role }) => 
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   const fc = data || {
@@ -105,8 +103,6 @@ export const DietaryBreakdownWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -149,8 +145,6 @@ export const VendorCapacityTrackerWidget: React.FC<WidgetProps> = ({ role }) => 
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -226,8 +220,6 @@ export const MealSlotMonitorWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (

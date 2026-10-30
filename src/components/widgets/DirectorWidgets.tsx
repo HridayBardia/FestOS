@@ -43,8 +43,6 @@ export const MasterKpiBarWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   const kpis = data || {
@@ -126,8 +124,6 @@ export const LiveIncidentCommandWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   const incidents = data?.incidents || [];
@@ -186,8 +182,6 @@ export const PendingApprovalsWidget: React.FC<WidgetProps> = ({ role, onRefreshT
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   const handleDecision = async (app: any, decision: 'approve' | 'reject') => {
@@ -289,8 +283,6 @@ export const CrossDepartmentAlertsWidget: React.FC<WidgetProps> = ({ role }) => 
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -301,13 +293,12 @@ export const CrossDepartmentAlertsWidget: React.FC<WidgetProps> = ({ role }) => 
             <div className="flex justify-between items-center text-[10px] font-mono">
               <span className="font-bold text-[#1A1A1A]">{alert.id}</span>
               <span
-                className={`px-1.5 py-0.2 rounded font-bold uppercase ${
-                  alert.severity === 'critical'
+                className={`px-1.5 py-0.2 rounded font-bold uppercase ${alert.severity === 'critical'
                     ? 'bg-red-100 text-red-800'
                     : alert.severity === 'high'
-                    ? 'bg-amber-100 text-amber-800'
-                    : 'bg-blue-100 text-blue-800'
-                }`}
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}
               >
                 {alert.severity}
               </span>
@@ -343,8 +334,6 @@ export const DirectorAlertsDrilldownWidget: React.FC<WidgetProps> = ({ role }) =
 
   useEffect(() => {
     fetchAlerts();
-    const interval = setInterval(fetchAlerts, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   const filteredData = data.filter((alert: any) => {
@@ -382,18 +371,17 @@ export const DirectorAlertsDrilldownWidget: React.FC<WidgetProps> = ({ role }) =
           {/* Severity Filter Pills */}
           <div className="flex items-center gap-1.5 shrink-0">
             {['all', 'critical', 'high', 'medium'].map((sev) => {
-              const count = sev === 'all' 
-                ? data.length 
+              const count = sev === 'all'
+                ? data.length
                 : data.filter((a: any) => (a.severity || '').toLowerCase() === sev).length;
               return (
                 <button
                   key={sev}
                   onClick={() => setSeverityFilter(sev)}
-                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
-                    severityFilter === sev
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase transition-all ${severityFilter === sev
                       ? 'bg-[#1A1A1A] text-white shadow-sm'
                       : 'bg-white hover:bg-[#FAF8F5] text-[#6B655E] border border-[#E5DFD3]'
-                  }`}
+                    }`}
                 >
                   {sev} {count > 0 && `(${count})`}
                 </button>

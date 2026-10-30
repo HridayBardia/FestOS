@@ -34,23 +34,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const permissions = PERMISSION_MATRIX[role] || PERMISSION_MATRIX.director;
   const roleDef = ROLES[role] || ROLES.director;
 
-  // Sector-specific tabs configuration
+  const isDirector = role === 'director';
+
+  // Sector-specific tabs strictly tailored to the authenticated department
   const allNavItems = [
     {
       id: 'dashboard',
-      label: role === 'director' ? 'Executive Overview' : `${roleDef.name} Desk`,
-      subtitle: 'Real-time telemetry',
+      label: isDirector ? 'Executive Overview' : `${roleDef.name} Desk`,
+      subtitle: isDirector ? 'Real-time telemetry' : `${roleDef.department} operations`,
       icon: LayoutDashboard,
       badge: null,
       visible: true,
     },
     {
       id: 'participants',
-      label: 'Contingents & Rosters',
+      label: isDirector ? 'Contingents & Rosters' : 'Delegate Check-In Roster',
       subtitle: `${participantsCount.toLocaleString()} delegates`,
       icon: Users,
       badge: null,
-      visible: permissions.participants !== 'none',
+      visible: isDirector || role === 'registration',
     },
     {
       id: 'accommodation',
@@ -58,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       subtitle: 'Hostels & external stays',
       icon: Building2,
       badge: null,
-      visible: permissions.accommodation !== 'none',
+      visible: isDirector || role === 'hospitality',
     },
     {
       id: 'schedule',
@@ -67,15 +69,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: CalendarDays,
       badge: clashes.length > 0 ? `${clashes.length} Clashes` : null,
       badgeColor: 'bg-[#FAECEB] text-[#7C2D2A] border border-[#F0C9C7]',
-      visible: permissions.schedule !== 'none',
+      visible: isDirector || role === 'events',
     },
     {
       id: 'logistics',
-      label: 'Logistics & Vendors',
-      subtitle: 'Hygiene & equipment depot',
+      label: 'Logistics Depot',
+      subtitle: 'Equipment & venues depot',
       icon: Truck,
       badge: null,
-      visible: permissions.logistics !== 'none' || permissions.vendors !== 'none',
+      visible: isDirector || role === 'logistics',
     },
     {
       id: 'disruptions',
@@ -84,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Flame,
       badge: activeDisruptions.length > 0 ? `${activeDisruptions.length} Active` : null,
       badgeColor: 'bg-[#FAF0E4] text-[#7A4E1D] border border-[#EED5BC] animate-pulse',
-      visible: Boolean(permissions.disruptions && permissions.disruptions !== 'report_only'),
+      visible: isDirector,
     },
   ];
 
@@ -132,17 +134,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               onClick={() => setCurrentTab(item.id)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-150 group text-left ${
-                isActive
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-150 group text-left ${isActive
                   ? 'bg-white text-[#1A1A1A] shadow-luxury border border-[#E5DFD3] font-semibold'
                   : 'text-[#6B655E] hover:text-[#1A1A1A] hover:bg-white/60 border border-transparent'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    isActive ? 'bg-[#F6EFE6] text-[#A3703F]' : 'text-[#8F8982] group-hover:text-[#1A1A1A]'
-                  }`}
+                  className={`p-1.5 rounded-lg transition-colors ${isActive ? 'bg-[#F6EFE6] text-[#A3703F]' : 'text-[#8F8982] group-hover:text-[#1A1A1A]'
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                 </div>

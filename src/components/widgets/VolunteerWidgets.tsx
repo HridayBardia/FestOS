@@ -40,8 +40,6 @@ export const MyShiftWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   const shift = data || {
@@ -105,8 +103,6 @@ export const MyTasksWidget: React.FC<WidgetProps> = ({ role, onRefreshTrigger })
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   const handleCompleteTask = async (taskId: string) => {

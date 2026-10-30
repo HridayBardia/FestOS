@@ -42,8 +42,6 @@ export const CheckinCounterWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   const telemetry = data?.telemetry || { total_canonical: 2416, checked_in_count: 0, checkin_percentage: 0 };
@@ -127,8 +125,6 @@ export const CheckinQueueWidget: React.FC<WidgetProps> = ({ role, onRefreshTrigg
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role, search]);
 
   const handleCheckIn = async (participantId: string) => {
@@ -255,8 +251,6 @@ export const DuplicateResolutionWidget: React.FC<WidgetProps> = ({ role, onRefre
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   const handleResolve = async (cand: any, action: 'confirm_canonical' | 'keep_distinct') => {
@@ -375,8 +369,6 @@ export const WristbandIssuanceWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (
@@ -430,8 +422,6 @@ export const LateArrivalsWidget: React.FC<WidgetProps> = ({ role }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [role]);
 
   return (

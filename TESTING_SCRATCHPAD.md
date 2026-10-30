@@ -76,10 +76,10 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 - [ ] **3.1 Inspect Active Clashes**
   - Navigate to `Schedule & Clashes` tab.
   - **Verify initial flagged clashes**:
-    1. *Venue Conflict: Chanakya Hall* (Overlap between `Boardroom Blitz` 14:00-17:30 and `Executive Leadership Keynote` 16:30-18:00).
+    1. *Venue Conflict: Main Stage* (Overlap between `Boardroom Blitz` 14:00-17:30 and `Executive Leadership Keynote` 16:30-18:00).
     2. *Participant Overlap: Rohit Verma* (Registered concurrently for `Boardroom Blitz` and `BeatTheStreet Algo Trading`).
 - [ ] **3.2 1-Click Clash Auto-Mitigation**
-  - In the clash banner for *Venue Conflict: Chanakya Hall*, click `Shift Venue / Reallocate`.
+  - In the clash banner for *Venue Conflict: Main Stage*, click `Shift Venue / Reallocate`.
   - Choose destination venue `Central Auditorium` (Capacity: 1200 pax).
   - Enter justification: `"Shifted to Central Audi due to stage conflict"` and authorize.
   - Click `Reassign Venue & Commit Audit`.
