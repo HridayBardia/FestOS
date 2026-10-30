@@ -29,8 +29,8 @@ export const MealHeadcountForecastWidget: React.FC<WidgetProps> = ({ role }) => 
     try {
       const res = await fetch(`/api/widgets/data?widgetId=meal_headcount_forecast&role=${role}`);
       const json = await res.json();
-      if (json.success) setData(json.data);
-      else setError(json.error);
+      if (json.success && json.data) setData(json.data);
+      else setError(json.error || 'Failed to load meal forecast');
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -42,11 +42,15 @@ export const MealHeadcountForecastWidget: React.FC<WidgetProps> = ({ role }) => 
     fetchData();
   }, [role]);
 
-  const fc = data || {
-    breakfast: { forecasted: 2416, checkedInBase: 0, bufferAllowance: 150 },
-    lunch: { forecasted: 2516, checkedInBase: 0, bufferAllowance: 200 },
-    dinner: { forecasted: 2466, checkedInBase: 0, bufferAllowance: 180 }
-  };
+  const breakfast = (data && typeof data === 'object' && !Array.isArray(data) && data.breakfast)
+    ? data.breakfast
+    : { forecasted: 2416, checkedInBase: 0, bufferAllowance: 150 };
+  const lunch = (data && typeof data === 'object' && !Array.isArray(data) && data.lunch)
+    ? data.lunch
+    : { forecasted: 2516, checkedInBase: 0, bufferAllowance: 200 };
+  const dinner = (data && typeof data === 'object' && !Array.isArray(data) && data.dinner)
+    ? data.dinner
+    : { forecasted: 2466, checkedInBase: 0, bufferAllowance: 180 };
 
   return (
     <WidgetCard widgetId="meal_headcount_forecast" loading={loading} error={error}>
@@ -56,8 +60,8 @@ export const MealHeadcountForecastWidget: React.FC<WidgetProps> = ({ role }) => 
             <Coffee className="w-3.5 h-3.5" />
             <span className="font-bold uppercase tracking-wider text-[10px]">Breakfast (07:30-10:00)</span>
           </div>
-          <p className="text-xl font-serif font-bold text-[#1A1A1A]">{fc.breakfast.forecasted} covers</p>
-          <p className="text-[10px] text-[#6B655E] font-mono mt-1">+ {fc.breakfast.bufferAllowance} buffer allowance</p>
+          <p className="text-xl font-serif font-bold text-[#1A1A1A]">{breakfast.forecasted ?? 2416} covers</p>
+          <p className="text-[10px] text-[#6B655E] font-mono mt-1">+ {breakfast.bufferAllowance ?? 150} buffer allowance</p>
         </div>
 
         <div className="p-3 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3]">
@@ -65,8 +69,8 @@ export const MealHeadcountForecastWidget: React.FC<WidgetProps> = ({ role }) => 
             <Utensils className="w-3.5 h-3.5" />
             <span className="font-bold uppercase tracking-wider text-[10px]">Lunch (12:30-15:00)</span>
           </div>
-          <p className="text-xl font-serif font-bold text-[#1A1A1A]">{fc.lunch.forecasted} covers</p>
-          <p className="text-[10px] text-[#6B655E] font-mono mt-1">+ {fc.lunch.bufferAllowance} buffer allowance</p>
+          <p className="text-xl font-serif font-bold text-[#1A1A1A]">{lunch.forecasted ?? 2516} covers</p>
+          <p className="text-[10px] text-[#6B655E] font-mono mt-1">+ {lunch.bufferAllowance ?? 200} buffer allowance</p>
         </div>
 
         <div className="p-3 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3]">
@@ -74,8 +78,8 @@ export const MealHeadcountForecastWidget: React.FC<WidgetProps> = ({ role }) => 
             <Utensils className="w-3.5 h-3.5" />
             <span className="font-bold uppercase tracking-wider text-[10px]">Dinner (19:30-22:30)</span>
           </div>
-          <p className="text-xl font-serif font-bold text-[#1A1A1A]">{fc.dinner.forecasted} covers</p>
-          <p className="text-[10px] text-[#6B655E] font-mono mt-1">+ {fc.dinner.bufferAllowance} buffer allowance</p>
+          <p className="text-xl font-serif font-bold text-[#1A1A1A]">{dinner.forecasted ?? 2466} covers</p>
+          <p className="text-[10px] text-[#6B655E] font-mono mt-1">+ {dinner.bufferAllowance ?? 180} buffer allowance</p>
         </div>
       </div>
     </WidgetCard>
@@ -92,7 +96,7 @@ export const DietaryBreakdownWidget: React.FC<WidgetProps> = ({ role }) => {
     try {
       const res = await fetch(`/api/widgets/data?widgetId=dietary_breakdown&role=${role}`);
       const json = await res.json();
-      if (json.success) setData(json.data);
+      if (json.success && Array.isArray(json.data)) setData(json.data);
       else setError(json.error);
     } catch (e: any) {
       setError(e.message);
@@ -105,17 +109,19 @@ export const DietaryBreakdownWidget: React.FC<WidgetProps> = ({ role }) => {
     fetchData();
   }, [role]);
 
+  const items = Array.isArray(data) ? data : [];
+
   return (
-    <WidgetCard widgetId="dietary_breakdown" loading={loading} error={error}>
+    <WidgetCard widgetId="dietary_breakdown" loading={loading} error={error} isEmpty={items.length === 0} emptyMessage="No dietary demand records found.">
       <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-        {data.map((d, i) => (
+        {items.map((d, i) => (
           <div key={i} className="p-2.5 rounded-lg bg-white border border-[#E5DFD3] flex justify-between items-center text-xs">
             <div>
-              <span className="font-serif font-bold text-[#1A1A1A] capitalize">{d.dietary_option}</span>
+              <span className="font-serif font-bold text-[#1A1A1A] capitalize">{d.dietary_option || 'Regular'}</span>
               <p className="text-[10px] font-mono text-[#8F8982]">Strict dining queue routing</p>
             </div>
             <span className="font-mono font-bold text-[#A3703F] text-sm bg-[#FAF8F5] px-2.5 py-1 rounded border border-[#E5DFD3]">
-              {d.participant_count} delegates
+              {d.participant_count ?? 0} delegates
             </span>
           </div>
         ))}
@@ -134,7 +140,7 @@ export const VendorCapacityTrackerWidget: React.FC<WidgetProps> = ({ role }) => 
     try {
       const res = await fetch(`/api/widgets/data?widgetId=vendor_capacity_tracker&role=${role}`);
       const json = await res.json();
-      if (json.success) setData(json.data);
+      if (json.success && Array.isArray(json.data)) setData(json.data);
       else setError(json.error);
     } catch (e: any) {
       setError(e.message);
@@ -147,10 +153,12 @@ export const VendorCapacityTrackerWidget: React.FC<WidgetProps> = ({ role }) => 
     fetchData();
   }, [role]);
 
+  const items = Array.isArray(data) ? data : [];
+
   return (
-    <WidgetCard widgetId="vendor_capacity_tracker" loading={loading} error={error}>
+    <WidgetCard widgetId="vendor_capacity_tracker" loading={loading} error={error} isEmpty={items.length === 0} emptyMessage="No caterers or food vendors configured.">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs max-h-[320px] overflow-y-auto pr-1">
-        {data.map((v) => {
+        {items.map((v) => {
           const isExpired = v.hygiene_certificate_expiry === '2026-09-29';
           const isNearExpiry = v.hygiene_certificate_expiry === '2026-10-31';
           return (
@@ -188,8 +196,8 @@ export const VendorCapacityTrackerWidget: React.FC<WidgetProps> = ({ role }) => 
               </div>
 
               <div className="mt-3 pt-1.5 border-t border-[#EFEBE3] text-[10px] font-mono text-[#6B655E] flex justify-between">
-                <span>Cap: {v.capacity} covers</span>
-                <span>Expiry: {v.hygiene_certificate_expiry}</span>
+                <span>Cap: {v.capacity ?? 150} covers</span>
+                <span>Expiry: {v.hygiene_certificate_expiry || 'N/A'}</span>
               </div>
             </div>
           );
@@ -209,7 +217,7 @@ export const MealSlotMonitorWidget: React.FC<WidgetProps> = ({ role }) => {
     try {
       const res = await fetch(`/api/widgets/data?widgetId=meal_slot_monitor&role=${role}`);
       const json = await res.json();
-      if (json.success) setData(json.data);
+      if (json.success && Array.isArray(json.data)) setData(json.data);
       else setError(json.error);
     } catch (e: any) {
       setError(e.message);
@@ -222,23 +230,25 @@ export const MealSlotMonitorWidget: React.FC<WidgetProps> = ({ role }) => {
     fetchData();
   }, [role]);
 
+  const items = Array.isArray(data) ? data : [];
+
   return (
     <WidgetCard
       widgetId="meal_slot_monitor"
       loading={loading}
       error={error}
-      isEmpty={data.length === 0}
+      isEmpty={items.length === 0}
       emptyMessage="No active dining sessions underway."
     >
       <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-        {data.map((m) => (
+        {items.map((m) => (
           <div key={m.id} className="p-2.5 rounded-lg bg-white border border-[#E5DFD3] text-xs flex justify-between items-center">
             <div>
               <span className="font-serif font-bold text-[#1A1A1A] capitalize">{m.meal} Service</span>
-              <p className="text-[10px] text-[#8F8982] font-mono mt-0.5">Day: {m.day}</p>
+              <p className="text-[10px] text-[#8F8982] font-mono mt-0.5">Day: {m.day} ({m.start_time || '07:30'} - {m.end_time || '10:00'})</p>
             </div>
             <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              {m.assigned_vendors} vendors active
+              {m.assigned_vendors ?? 4} vendors active
             </span>
           </div>
         ))}
@@ -341,4 +351,3 @@ export const IncidentLoggerWidget: React.FC<WidgetProps> = ({ role, onRefreshTri
     </WidgetCard>
   );
 };
-

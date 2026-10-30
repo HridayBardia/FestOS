@@ -45,7 +45,7 @@ export const MasterKpiBarWidget: React.FC<WidgetProps> = ({ role }) => {
     fetchData();
   }, [role]);
 
-  const kpis = data || {
+  const kpis = (data && typeof data === 'object' && !Array.isArray(data) && data.canonicalEligible !== undefined) ? data : {
     totalRegistered: 2836,
     canonicalEligible: 2416,
     checkedIn: 0,
@@ -336,7 +336,8 @@ export const DirectorAlertsDrilldownWidget: React.FC<WidgetProps> = ({ role }) =
     fetchAlerts();
   }, [role]);
 
-  const filteredData = data.filter((alert: any) => {
+  const alertList = Array.isArray(data) ? data : [];
+  const filteredData = alertList.filter((alert: any) => {
     if (severityFilter === 'all') return true;
     return (alert.severity || '').toLowerCase() === severityFilter.toLowerCase();
   });
@@ -372,8 +373,8 @@ export const DirectorAlertsDrilldownWidget: React.FC<WidgetProps> = ({ role }) =
           <div className="flex items-center gap-1.5 shrink-0">
             {['all', 'critical', 'high', 'medium'].map((sev) => {
               const count = sev === 'all'
-                ? data.length
-                : data.filter((a: any) => (a.severity || '').toLowerCase() === sev).length;
+                ? alertList.length
+                : alertList.filter((a: any) => (a.severity || '').toLowerCase() === sev).length;
               return (
                 <button
                   key={sev}

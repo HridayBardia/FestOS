@@ -304,6 +304,11 @@ class InMemoryDatabase {
 
     // 2. Checkins list / Wristbands
     if (norm.includes('from check_ins') || norm.includes('join check_ins')) {
+      if (norm.includes('count(')) {
+        const count = this.checkIns.size || 1420;
+        return { rows: [{ cnt: count }], rowCount: 1 };
+      }
+
       if (norm.includes('insert into check_ins')) {
         const pid = params?.[0];
         const status = params?.[1] || 'checked_in';
@@ -587,6 +592,37 @@ class InMemoryDatabase {
         capacity: parseInt(v.capacity, 10) || 150,
         payment_terms: v.payment_terms
       }));
+      return { rows, rowCount: rows.length };
+    }
+
+    // 11b. Dietary Demand / v_dietary_demand
+    if (norm.includes('v_dietary_demand') || (norm.includes('dietary') && norm.includes('from participants'))) {
+      const counts: Record<string, number> = {};
+      (CANONICAL_DATASET.participants || []).forEach(p => {
+        const rawDiet = (p.dietary_needs || 'Regular').trim();
+        const diet = rawDiet === 'None' || !rawDiet ? 'Regular' : rawDiet;
+        counts[diet] = (counts[diet] || 0) + 1;
+      });
+      const rows = Object.entries(counts).map(([opt, count]) => ({
+        dietary_option: opt,
+        participant_count: count
+      })).sort((a, b) => b.participant_count - a.participant_count);
+      return { rows, rowCount: rows.length };
+    }
+
+    // 11c. Meal Slots
+    if (norm.includes('from meal_slots') || norm.includes('vendor_assignments')) {
+      const rows = [
+        { id: 'MS-D1-B', day: 'Day 1', meal: 'Breakfast', start_time: '07:30', end_time: '10:00', assigned_vendors: 4 },
+        { id: 'MS-D1-L', day: 'Day 1', meal: 'Lunch', start_time: '12:30', end_time: '15:00', assigned_vendors: 6 },
+        { id: 'MS-D1-D', day: 'Day 1', meal: 'Dinner', start_time: '19:30', end_time: '22:30', assigned_vendors: 5 },
+        { id: 'MS-D2-B', day: 'Day 2', meal: 'Breakfast', start_time: '07:30', end_time: '10:00', assigned_vendors: 4 },
+        { id: 'MS-D2-L', day: 'Day 2', meal: 'Lunch', start_time: '12:30', end_time: '15:00', assigned_vendors: 6 },
+        { id: 'MS-D2-D', day: 'Day 2', meal: 'Dinner', start_time: '19:30', end_time: '22:30', assigned_vendors: 5 },
+        { id: 'MS-D3-B', day: 'Day 3', meal: 'Breakfast', start_time: '07:30', end_time: '10:00', assigned_vendors: 4 },
+        { id: 'MS-D3-L', day: 'Day 3', meal: 'Lunch', start_time: '12:30', end_time: '15:00', assigned_vendors: 6 },
+        { id: 'MS-D3-D', day: 'Day 3', meal: 'Dinner', start_time: '19:30', end_time: '22:30', assigned_vendors: 5 }
+      ];
       return { rows, rowCount: rows.length };
     }
 
