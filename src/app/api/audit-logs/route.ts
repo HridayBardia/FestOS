@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSession } from '@/lib/auth';
 import { db } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const sessionResult = await requireSession(req);
   if ('status' in sessionResult) {
