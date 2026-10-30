@@ -14,7 +14,11 @@ const DUMMY_HASH = '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const rawLoginId = typeof body.loginId === 'string' ? body.loginId : '';
+    const rawLoginId = typeof body.loginId === 'string'
+      ? body.loginId
+      : typeof body.memberId === 'string'
+        ? body.memberId
+        : '';
     const password = typeof body.password === 'string' ? body.password : '';
     const normalizedId = rawLoginId.trim().toUpperCase();
 

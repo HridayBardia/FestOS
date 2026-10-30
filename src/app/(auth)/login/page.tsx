@@ -35,6 +35,7 @@ function LoginForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          loginId: memberId.trim().toUpperCase(),
           memberId: memberId.trim().toUpperCase(),
           password,
         }),
