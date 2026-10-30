@@ -3,7 +3,7 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['@electric-sql/pglite', 'pg'],
     outputFileTracingIncludes: {
-      '/api/**/*': ['./src/lib/canonical.json'],
+      '/api/**/*': ['./src/lib/canonical.json', './src/lib/canonicalAllocations.json'],
     },
   },
 };

@@ -426,7 +426,7 @@ export const DirectorAlertsDrilldownWidget: React.FC<WidgetProps> = ({ role }) =
 
                 {/* Description */}
                 <p className="text-xs text-[#4A4540] leading-relaxed">
-                  {alert.description || alert.detail || 'Operational variance requiring director review.'}
+                  {alert.description || alert.detail || alert.message || 'Operational variance requiring director review.'}
                 </p>
 
                 {/* Footer: Suggested Action & File location */}

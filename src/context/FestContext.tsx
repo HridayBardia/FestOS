@@ -33,6 +33,11 @@ import {
   INITIAL_CORE_TEAM,
   INITIAL_AUDIT_LOGS
 } from '../lib/mockData';
+import {
+  CANONICAL_ALLOCATIONS,
+  CANONICAL_PARTICIPANTS,
+  CANONICAL_CONTINGENTS
+} from '../lib/canonicalAllocations';
 import { getSupabaseClient, isSupabaseConfigured, saveCredentials, getStoredCredentials } from '../lib/supabase';
 import { formatISTTimeWithSeconds } from '../lib/formatters';
 
@@ -109,11 +114,17 @@ const FestContext = createContext<FestContextType | undefined>(undefined);
 const BROADCAST_CHANNEL_NAME = 'festos_aarohan_luxury_sync';
 
 export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [contingents, setContingents] = useState<Contingent[]>(INITIAL_CONTINGENTS);
-  const [participants, setParticipants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
+  const [contingents, setContingents] = useState<Contingent[]>(() =>
+    CANONICAL_CONTINGENTS && CANONICAL_CONTINGENTS.length > 0 ? CANONICAL_CONTINGENTS : INITIAL_CONTINGENTS
+  );
+  const [participants, setParticipants] = useState<Participant[]>(() =>
+    CANONICAL_PARTICIPANTS && CANONICAL_PARTICIPANTS.length > 0 ? CANONICAL_PARTICIPANTS : INITIAL_PARTICIPANTS
+  );
   const [hostels, setHostels] = useState<Hostel[]>(INITIAL_HOSTELS);
   const [externalStays, setExternalStays] = useState<ExternalStay[]>(INITIAL_EXTERNAL_STAYS);
-  const [allocations, setAllocations] = useState<AccommodationAllocation[]>(INITIAL_ALLOCATIONS);
+  const [allocations, setAllocations] = useState<AccommodationAllocation[]>(() =>
+    CANONICAL_ALLOCATIONS && CANONICAL_ALLOCATIONS.length > 0 ? CANONICAL_ALLOCATIONS : INITIAL_ALLOCATIONS
+  );
   const [venues, setVenues] = useState<Venue[]>(INITIAL_VENUES);
   const [events, setEvents] = useState<EventItem[]>(INITIAL_EVENTS);
   const [registrations, setRegistrations] = useState<Registration[]>(INITIAL_REGISTRATIONS);

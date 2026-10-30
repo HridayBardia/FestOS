@@ -938,8 +938,123 @@ function getWidgetFallbackData(widgetId: string): any {
 
     case 'cross_department_alerts':
       return [
-        { id: 'ALERT-01', department: 'Logistics', message: 'Sound check delay at LT-1', severity: 'medium' },
-        { id: 'ALERT-02', department: 'Food', message: 'Vendor VND02 evening meal buffer primed', severity: 'low' }
+        {
+          id: 'ISSUE-00001',
+          severity: 'critical',
+          issue_type: 'accessibility_constraint',
+          title: 'Wheelchair Ground Floor Mandate',
+          description: 'Delegate P0015 (Arjun Nair, IIT Bombay) declared wheelchair access. Hard constraint: Must be placed on Ground Floor (G01-G08) with ramp access.',
+          suggested_action: 'Lock room allocation to Ground Floor only. Do not move above Floor 0.',
+          department: 'hospitality'
+        },
+        {
+          id: 'ISSUE-00002',
+          severity: 'critical',
+          issue_type: 'expired_compliance',
+          title: 'Vendor Food Hygiene Expiry',
+          description: 'Vendor VND05 (Vendor E) health and safety certificate expired on 2026-09-29 prior to festival commencement.',
+          suggested_action: 'Hold vendor payout settlement and require emergency re-inspection before dinner service.',
+          department: 'food'
+        },
+        {
+          id: 'ISSUE-00003',
+          severity: 'high',
+          issue_type: 'sound_clash',
+          title: 'Acoustic Interference Conflict',
+          description: 'Event E04 (Battle of Bands) at LT-1 acoustic threshold clashes with simultaneous quiet debate round at LT-2.',
+          suggested_action: 'Stagger start by 45 minutes or route band sound check through Auditorium audio baffle.',
+          department: 'events'
+        },
+        {
+          id: 'ISSUE-00004',
+          severity: 'medium',
+          issue_type: 'duplicate_registration',
+          title: 'Duplicate Candidate Suspected',
+          description: 'P0240 and P0241 share identical phone and college ID with minor spelling variation in name.',
+          suggested_action: 'Merge records via Registration Desk Duplicate Candidate Resolver.',
+          department: 'registration'
+        }
+      ];
+
+    case 'special_needs_queue':
+      return [
+        {
+          participant_id: 'P0004',
+          name: 'Meera Das',
+          college: 'IIM Ahmedabad',
+          accessibility_needs: 'Visual assistance',
+          dietary_needs: 'Vegetarian',
+          room_id: 'G01',
+          floor: 0,
+          room_has_ramp: 'yes'
+        },
+        {
+          participant_id: 'P0015',
+          name: 'Arjun Nair',
+          college: 'IIT Bombay',
+          accessibility_needs: 'Wheelchair access',
+          dietary_needs: 'Jain',
+          room_id: 'G02',
+          floor: 0,
+          room_has_ramp: 'yes'
+        },
+        {
+          participant_id: 'P0025',
+          name: 'Kavita Joshi',
+          college: 'FMS Delhi',
+          accessibility_needs: 'Ground floor mobility assistance',
+          dietary_needs: 'Vegan',
+          room_id: 'G03',
+          floor: 0,
+          room_has_ramp: 'yes'
+        },
+        {
+          participant_id: 'P0038',
+          name: 'Rahul Sharma',
+          college: 'XLRI Jamshedpur',
+          accessibility_needs: 'Auditory assistance',
+          dietary_needs: 'Vegetarian',
+          room_id: 'G04',
+          floor: 0,
+          room_has_ramp: 'yes'
+        }
+      ];
+
+    case 'approval_requests':
+    case 'room_override_form':
+      return [
+        {
+          id: 'APP-001',
+          reason: 'Emergency overflow: 24 delegates from IIM Bangalore allocated to Radisson Blu due to Block B capacity reach.',
+          status: 'pending',
+          requested_by: 'ST02 (Hospitality Lead)',
+          action: 'overflow_external_allocation',
+          entity_table: 'bed_allocations'
+        },
+        {
+          id: 'APP-002',
+          reason: 'Delegate P0015 (Arjun Nair, IIT Bombay) requested ground floor ramp accessibility transfer to Room G01.',
+          status: 'approved',
+          requested_by: 'ST03 (Hospitality Front Desk)',
+          action: 'accessibility_priority_override',
+          entity_table: 'hostel_rooms'
+        },
+        {
+          id: 'APP-003',
+          reason: 'Faculty escort from XLRI Jamshedpur requires separate single rooming near contingent per festival constraint rule 5.',
+          status: 'approved',
+          requested_by: 'ST02 (Hospitality Lead)',
+          action: 'faculty_escort_room_reserve',
+          entity_table: 'hostel_rooms'
+        },
+        {
+          id: 'APP-004',
+          reason: 'External buffer expansion of 20 beds at Sayaji Hotel to absorb late-arriving contingents within approved budget.',
+          status: 'pending',
+          requested_by: 'ST02 (Hospitality Lead)',
+          action: 'budget_limit_override',
+          entity_table: 'bed_allocations'
+        }
       ];
 
     case 'festival_timeline_health':

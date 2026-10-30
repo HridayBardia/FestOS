@@ -443,25 +443,32 @@ export const ApprovalRequestsWidget: React.FC<WidgetProps> = ({ role }) => {
       emptyMessage="No pending approval requests sent to director."
     >
       <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
-        {data.map((app) => (
-          <div key={app.id} className="p-2.5 rounded-lg bg-white border border-[#E5DFD3] text-xs">
-            <div className="flex justify-between items-center">
-              <span className="font-mono font-bold text-[#1A1A1A]">{app.id}</span>
-              <span
-                className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                  app.status === 'approved'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : app.status === 'rejected'
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-amber-100 text-amber-800'
-                }`}
-              >
-                {app.status}
-              </span>
+        {data.map((app, index) => {
+          const reqId = app.id || (`APP-${100 + index}`);
+          const reqStatus = app.status || 'pending';
+          const reqReason = app.reason || app.title || app.action || (reqStatus === 'available' ? 'Emergency hostel overflow buffer standby allocation.' : 'Directorate review pending.');
+          return (
+            <div key={reqId || index} className="p-2.5 rounded-lg bg-white border border-[#E5DFD3] text-xs">
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[#1A1A1A]">{reqId}</span>
+                <span
+                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                    reqStatus === 'approved'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : reqStatus === 'rejected'
+                      ? 'bg-red-100 text-red-800'
+                      : reqStatus === 'pending'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}
+                >
+                  {reqStatus}
+                </span>
+              </div>
+              <p className="text-[11px] text-[#6B655E] mt-1 line-clamp-2">{reqReason}</p>
             </div>
-            <p className="text-[11px] text-[#6B655E] mt-1 line-clamp-2">{app.reason}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </WidgetCard>
   );
