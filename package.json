@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node server.js",
     "lint": "next lint",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "seed:raw": "tsx scripts/seed-raw.ts",
