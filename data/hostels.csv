@@ -1,0 +1,7 @@
+id,name,code,gender_allowed,total_capacity,occupied_beds,status,floor_count,has_elevator,notes
+hostel-01,IPM Residence 1,IPM-H1,female,120,74,operational,3,true,Ground floor priority for accessibility needs. Ramp access available.
+hostel-02,IPM Residence 2,IPM-H2,male,150,96,operational,4,true,Wing B renovated recently. 24/7 solar hot water.
+hostel-03,PGP Block Alpha,PGP-BA,male,180,122,operational,3,false,Standard double occupancy rooms.
+hostel-04,PGP Block Beta,PGP-BB,female,140,68,operational,3,false,Quiet study zone on 3rd floor.
+hostel-05,MDP Executive Residence,MDP-RES,all,60,42,operational,2,true,Premium air-conditioned suites reserved for VIPs judges and accessibility overflow.
+

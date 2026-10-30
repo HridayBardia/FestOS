@@ -1,0 +1,5 @@
+id,name,location,total_capacity,occupied_beds,cost_per_night,contact_person,contact_phone,status
+ext-01,Crescent Spa & Resort (Overflow Stay 1),Rau Bypass Road Indore (5 km from Campus),100,18,2200,Vikram Joshi (GM),+91 94250 88990,active
+ext-02,Radisson Blu Indore (VIP / Judges Overflow),MR 10 Road Vijay Nagar Indore,40,12,4800,Sunita Rao,+91 97551 23411,active
+ext-03,Papaya Tree Hotel (Contingent Overflow),A.B. Road Rau Circle Indore,80,0,1800,Harish Patel,+91 98260 77123,standby
+
