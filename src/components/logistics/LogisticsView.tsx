@@ -11,12 +11,14 @@ import {
   Box,
   Layers,
   Sparkles,
-  ShoppingBag
+  ShoppingBag,
+  MapPin
 } from 'lucide-react';
 import { useFest } from '@/context/FestContext';
+import { formatISTTime } from '@/lib/formatters';
 
 export const LogisticsView: React.FC = () => {
-  const { vendors, logistics, merch, updateVendorStatus } = useFest();
+  const { vendors, logistics, merch, events, venues, updateVendorStatus } = useFest();
   const [activeTab, setActiveTab] = useState<'vendors' | 'inventory' | 'merch'>('vendors');
 
   return (

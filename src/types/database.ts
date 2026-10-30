@@ -109,6 +109,10 @@ export interface EventItem {
   status: EventStatus;
   registered_participants_count?: number;
   equipment_needed?: string[];
+  duration_minutes?: number;
+  venue_requirements?: string;
+  equipment_needs?: string;
+  volunteers_needed?: number;
 }
 
 export interface Registration {

@@ -322,6 +322,10 @@ export async function GET(req: NextRequest) {
             ss.event_id,
             e.event_name,
             e.type as event_type,
+            e.duration_minutes,
+            e.venue_requirements,
+            e.equipment_needs,
+            e.volunteers_needed,
             ss.round,
             ss.venue_id,
             v.venue_name,
@@ -331,8 +335,7 @@ export async function GET(req: NextRequest) {
           FROM schedule_slots ss
           JOIN events e ON ss.event_id = e.event_id
           JOIN venues v ON ss.venue_id = v.venue_id
-          ORDER BY ss.start_time ASC
-          LIMIT 25;
+          ORDER BY ss.start_time ASC, e.event_id ASC;
         `);
         data = schedRes.rows;
         break;
@@ -400,12 +403,11 @@ export async function GET(req: NextRequest) {
 
       case 'event_delay_tool': {
         const eventsListRes = await db.query(`
-          SELECT ss.id as slot_id, e.event_id, e.event_name, ss.start_time, ss.end_time, v.venue_name
+          SELECT ss.id as slot_id, e.event_id, e.event_name, e.duration_minutes, ss.start_time, ss.end_time, v.venue_name
           FROM schedule_slots ss
           JOIN events e ON ss.event_id = e.event_id
           JOIN venues v ON ss.venue_id = v.venue_id
-          ORDER BY ss.start_time ASC
-          LIMIT 15;
+          ORDER BY ss.start_time ASC, e.event_id ASC;
         `);
         data = eventsListRes.rows;
         break;
@@ -451,13 +453,22 @@ export async function GET(req: NextRequest) {
 
       case 'equipment_by_venue': {
         const eqRes = await db.query(`
-          SELECT e.event_id, e.event_name, e.equipment_needs, v.venue_name
+          SELECT
+            e.event_id,
+            e.event_name,
+            e.duration_minutes,
+            e.venue_requirements,
+            e.equipment_needs,
+            e.volunteers_needed,
+            v.venue_id,
+            v.venue_name,
+            ss.start_time,
+            ss.end_time
           FROM events e
           JOIN schedule_slots ss ON e.event_id = ss.event_id
           JOIN venues v ON ss.venue_id = v.venue_id
           WHERE e.equipment_needs IS NOT NULL AND e.equipment_needs != ''
-          ORDER BY v.venue_name
-          LIMIT 12;
+          ORDER BY ss.start_time ASC, e.event_id ASC;
         `);
         data = eqRes.rows;
         break;

@@ -12,6 +12,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { RoleKey } from '@/config/roles';
+import { formatISTTime } from '@/lib/formatters';
 
 interface WidgetProps {
   role: RoleKey;
