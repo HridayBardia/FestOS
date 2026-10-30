@@ -912,6 +912,65 @@ function getWidgetFallbackData(widgetId: string): any {
         { property_id: 'EXT03', property_name: 'Brilliant Convention Suites', total_beds: 200, allocated_beds: 160, cost_per_bed_night: 1400, distance_km: 6.0, transport_availability: 'shuttle_hourly' }
       ];
 
+    case 'move_request_queue':
+      return [
+        {
+          id: 'REQ-DISP-001',
+          from_role: 'events',
+          to_role: 'logistics',
+          type: 'AV Gear Dispatch',
+          item: '4x Wireless Shure SM58 Microphones + 2x Heavy Mic Stands',
+          venue_name: 'Auditorium (Main Hall)',
+          status: 'pending',
+          urgency: 'high',
+          created_at: new Date(Date.now() - 15 * 60000).toISOString()
+        },
+        {
+          id: 'REQ-DISP-002',
+          from_role: 'events',
+          to_role: 'logistics',
+          type: 'Projection & Display',
+          item: '1x 4K Projector + 2x 25m HDMI Cables',
+          venue_name: 'LT-1 (Lecture Theatre 1)',
+          status: 'dispatched',
+          urgency: 'medium',
+          created_at: new Date(Date.now() - 45 * 60000).toISOString()
+        },
+        {
+          id: 'REQ-DISP-003',
+          from_role: 'hospitality',
+          to_role: 'logistics',
+          type: 'Staging & Furniture',
+          item: '40x Banquet Chairs + 6x Registration Tables',
+          venue_name: 'Open Air Amphitheatre',
+          status: 'pending',
+          urgency: 'high',
+          created_at: new Date(Date.now() - 60 * 60000).toISOString()
+        },
+        {
+          id: 'REQ-DISP-004',
+          from_role: 'events',
+          to_role: 'logistics',
+          type: 'Power Distribution',
+          item: '8x 16A High-Load Extension Spike Boards',
+          venue_name: 'LT-2 (Lecture Theatre 2)',
+          status: 'dispatched',
+          urgency: 'medium',
+          created_at: new Date(Date.now() - 90 * 60000).toISOString()
+        },
+        {
+          id: 'REQ-DISP-005',
+          from_role: 'director',
+          to_role: 'logistics',
+          type: 'Executive Stage Rigging',
+          item: '1x Executive Wooden Rostrum + Cordless Lapel Mic Set',
+          venue_name: 'Seminar Hall',
+          status: 'pending',
+          urgency: 'high',
+          created_at: new Date(Date.now() - 120 * 60000).toISOString()
+        }
+      ];
+
     case 'master_kpi_bar':
       return {
         verifiedCanonical: 2416,

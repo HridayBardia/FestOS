@@ -179,6 +179,14 @@ export const MoveRequestQueueWidget: React.FC<WidgetProps> = ({ role }) => {
     fetchData();
   }, [role]);
 
+  const handleDispatch = (id: string) => {
+    setData((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: 'dispatched' } : item
+      )
+    );
+  };
+
   return (
     <WidgetCard
       widgetId="move_request_queue"
@@ -187,14 +195,53 @@ export const MoveRequestQueueWidget: React.FC<WidgetProps> = ({ role }) => {
       isEmpty={data.length === 0}
       emptyMessage="No active gear movement requests in queue."
     >
-      <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+      <div className="space-y-2.5 max-h-[290px] overflow-y-auto pr-1">
         {data.map((req) => (
-          <div key={req.id} className="p-2.5 rounded-lg bg-white border border-[#E5DFD3] text-xs">
-            <div className="flex justify-between items-center">
-              <span className="font-mono font-bold text-[#1A1A1A]">{req.id}</span>
-              <span className="text-[10px] uppercase font-bold text-[#A3703F]">{req.status}</span>
+          <div
+            key={req.id}
+            className="p-3 rounded-lg bg-white border border-[#E5DFD3] text-xs shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-[#C4B9A5] transition-all"
+          >
+            <div className="flex justify-between items-center mb-1.5">
+              <div className="flex items-center gap-2">
+                <span className="font-mono font-bold text-[#1A1A1A]">{req.id}</span>
+                <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#FAF0E4] text-[#A3703F] border border-[#E5DFD3]">
+                  {req.from_role ? `${req.from_role.toUpperCase()} TEAM` : 'EVENTS'}
+                </span>
+              </div>
+              <span
+                className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
+                  req.status === 'dispatched'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                }`}
+              >
+                {req.status || 'PENDING'}
+              </span>
             </div>
-            <p className="text-[11px] text-[#6B655E] mt-1">From: {req.from_role} | Type: {req.type}</p>
+
+            <p className="font-serif font-bold text-[#1A1A1A] text-sm">
+              {req.item || req.type || 'Stage & AV Equipment'}
+            </p>
+
+            <div className="flex items-center justify-between text-[11px] text-[#6B655E] mt-2 pt-2 border-t border-[#EFEBE3]">
+              <span className="flex items-center gap-1 font-medium">
+                <MapPin className="w-3.5 h-3.5 text-[#A3703F]" />
+                {req.venue_name || 'Auditorium (Main Hall)'}
+              </span>
+              {req.status === 'pending' ? (
+                <button
+                  type="button"
+                  onClick={() => handleDispatch(req.id)}
+                  className="px-2.5 py-1 text-[10px] font-bold rounded bg-[#A3703F] text-white hover:bg-[#8C6D36] transition-colors shadow-sm"
+                >
+                  Mark Dispatched
+                </button>
+              ) : (
+                <span className="text-emerald-700 font-bold text-[10px] flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Dispatched
+                </span>
+              )}
+            </div>
           </div>
         ))}
       </div>

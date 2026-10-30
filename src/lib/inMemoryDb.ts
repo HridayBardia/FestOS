@@ -26,6 +26,7 @@ class InMemoryDatabase {
   private approvals: any[] = [];
   private duplicateCandidates: any[] = [];
   private scheduleSlots: any[] = [];
+  private gearRequests: any[] = [];
 
   constructor() {
     this.seedInitialState();
@@ -203,6 +204,82 @@ class InMemoryDatabase {
         entity_id: 'BLOCK_A_TO_F',
         reason: 'Hostel rooming matrix verified with 200 rooms and zero hard-rule violations',
         created_at: new Date(Date.now() - 10800000).toISOString()
+      }
+    ];
+
+    // 7. Pre-generate inter-departmental gear dispatch requests
+    this.gearRequests = [
+      {
+        id: 'REQ-DISP-001',
+        from_role: 'events',
+        to_role: 'logistics',
+        type: 'AV Gear Dispatch',
+        item: '4x Wireless Shure SM58 Microphones + 2x Heavy Mic Stands',
+        venue_id: 'V01',
+        venue_name: 'Auditorium (Main Hall)',
+        status: 'pending',
+        urgency: 'high',
+        created_at: new Date(Date.now() - 15 * 60000).toISOString()
+      },
+      {
+        id: 'REQ-DISP-002',
+        from_role: 'events',
+        to_role: 'logistics',
+        type: 'Projection & Display',
+        item: '1x 4K Projector + 2x 25m HDMI Cables',
+        venue_id: 'V03',
+        venue_name: 'LT-1 (Lecture Theatre 1)',
+        status: 'dispatched',
+        urgency: 'medium',
+        created_at: new Date(Date.now() - 45 * 60000).toISOString()
+      },
+      {
+        id: 'REQ-DISP-003',
+        from_role: 'hospitality',
+        to_role: 'logistics',
+        type: 'Staging & Furniture',
+        item: '40x Banquet Chairs + 6x Registration Tables',
+        venue_id: 'V02',
+        venue_name: 'Open Air Amphitheatre',
+        status: 'pending',
+        urgency: 'high',
+        created_at: new Date(Date.now() - 60 * 60000).toISOString()
+      },
+      {
+        id: 'REQ-DISP-004',
+        from_role: 'events',
+        to_role: 'logistics',
+        type: 'Power Distribution',
+        item: '8x 16A High-Load Extension Spike Boards',
+        venue_id: 'V04',
+        venue_name: 'LT-2 (Lecture Theatre 2)',
+        status: 'dispatched',
+        urgency: 'medium',
+        created_at: new Date(Date.now() - 90 * 60000).toISOString()
+      },
+      {
+        id: 'REQ-DISP-005',
+        from_role: 'director',
+        to_role: 'logistics',
+        type: 'Executive Stage Rigging',
+        item: '1x Executive Wooden Rostrum + Cordless Lapel Mic Set',
+        venue_id: 'V05',
+        venue_name: 'Seminar Hall',
+        status: 'pending',
+        urgency: 'high',
+        created_at: new Date(Date.now() - 120 * 60000).toISOString()
+      },
+      {
+        id: 'REQ-DISP-006',
+        from_role: 'registration',
+        to_role: 'logistics',
+        type: 'Depot Replenishment',
+        item: '4x Industrial Barcode & NFC Desk Scanners',
+        venue_id: 'V01',
+        venue_name: 'Central Registration Foyer',
+        status: 'dispatched',
+        urgency: 'low',
+        created_at: new Date(Date.now() - 180 * 60000).toISOString()
       }
     ];
   }
@@ -400,8 +477,20 @@ class InMemoryDatabase {
       return { rows, rowCount: rows.length };
     }
 
-    // 9. Inventory Logistics
-    if (norm.includes('from inventory_logistics') || norm.includes('logistics')) {
+    // 9. Gear Dispatch Requests (Move Request Queue)
+    if (norm.includes('from requests') || norm.includes('move_request_queue')) {
+      if (norm.includes('update requests')) {
+        const id = params?.[1] || params?.[0];
+        const status = params?.[0] || 'dispatched';
+        const req = this.gearRequests.find(r => r.id === id);
+        if (req) req.status = status;
+        return { rows: [], rowCount: 1 };
+      }
+      return { rows: this.gearRequests, rowCount: this.gearRequests.length };
+    }
+
+    // 10. Inventory Logistics
+    if (norm.includes('from inventory_logistics')) {
       const rows = (CANONICAL_DATASET.inventory_logistics || []).map(i => ({
         item_id: i.item_id,
         item: i.item,
@@ -409,6 +498,9 @@ class InMemoryDatabase {
         location: i.location || 'Central Depot',
         condition: i.condition || 'good'
       }));
+      if (norm.includes('where quantity <= 5')) {
+        return { rows: rows.filter(r => r.quantity <= 15).slice(0, 10), rowCount: 10 };
+      }
       return { rows: rows.slice(0, 50), rowCount: rows.length };
     }
 
