@@ -15,6 +15,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { RoleKey } from '@/config/roles';
+import { formatISTDateTime } from '@/lib/formatters';
 
 interface WidgetProps {
   role: RoleKey;
@@ -444,7 +445,7 @@ export const LateArrivalsWidget: React.FC<WidgetProps> = ({ role }) => {
             </div>
             <div className="text-right">
               <span className="text-[10px] font-mono text-red-700 bg-white px-2 py-0.5 rounded border border-red-200 flex items-center gap-1">
-                <Clock className="w-3 h-3" /> {l.arrival_datetime}
+                <Clock className="w-3 h-3" /> {formatISTDateTime(l.arrival_datetime)}
               </span>
             </div>
           </div>
