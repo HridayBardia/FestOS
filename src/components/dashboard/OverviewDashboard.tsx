@@ -279,7 +279,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
                             updateEventVenue(
                               clash.eventIds[1],
                               'ven-01',
-                              'Emergency Clash Mitigation: Shifted to Central Auditorium',
+                              'Emergency Clash Mitigation: Shifted to Main Stage',
                               'Samarth Kulkarni (Ops Head)'
                             );
                           }}

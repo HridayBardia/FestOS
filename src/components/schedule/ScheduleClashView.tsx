@@ -319,7 +319,7 @@ export const ScheduleClashView: React.FC = () => {
                   rows={2}
                   value={shiftReason}
                   onChange={(e) => setShiftReason(e.target.value)}
-                  placeholder="e.g. Inclement weather at Amphitheatre; shifting crowd indoors to Central Auditorium."
+                  placeholder="e.g. Inclement weather at Amphitheatre; shifting crowd indoors to Main Stage."
                   className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5DFD3] text-[#1A1A1A] text-xs focus:outline-none focus:border-[#A3703F] resize-none"
                   required
                 />

@@ -127,7 +127,7 @@ export const DisruptionInjectorView: React.FC<DisruptionInjectorViewProps> = ({ 
         return [
           {
             id: 'log-01',
-            title: 'Emergency Sound Console Dispatch to Sports Arena',
+            title: 'Emergency Sound Console Dispatch to Sports Complex',
             category: 'Audio Logistics',
             severity: 'Medium',
             icon: Truck,
@@ -136,7 +136,7 @@ export const DisruptionInjectorView: React.FC<DisruptionInjectorViewProps> = ({ 
               await injectDisruption(
                 'VENDOR_BREACH',
                 { vendorId: 'vnd-02' },
-                'Sound console mixer channel fault at Sports Arena. Standby unit dispatched under emergency priority.',
+                'Sound console mixer channel fault at Sports Complex. Standby unit dispatched under emergency priority.',
                 'Logistics Head (Diya Gupta)'
               );
               setStatusNotification('Standby AV sound console dispatched. Venue status updated.');

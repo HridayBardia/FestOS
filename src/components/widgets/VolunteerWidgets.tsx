@@ -234,11 +234,15 @@ export const VenueHeadcountReportWidget: React.FC<WidgetProps> = ({ role, onRefr
               onChange={(e) => setVenueId(e.target.value)}
               className="w-full px-2.5 py-1.5 rounded border border-[#E5DFD3] bg-[#FAF8F5] text-[#1A1A1A]"
             >
-              <option value="V01">Central Auditorium (V01)</option>
-              <option value="V02">Amphitheatre (V02)</option>
-              <option value="V03">Sports Arena (V03)</option>
-              <option value="V04">Management Block Audi (V04)</option>
-              <option value="V05">Seminar Hall A (V05)</option>
+              <option value="V01">Main Stage (V01)</option>
+              <option value="V02">LT-1 (V02)</option>
+              <option value="V03">LT-2 (V03)</option>
+              <option value="V04">Amphitheatre (V04)</option>
+              <option value="V05">Quadrangle (V05)</option>
+              <option value="V06">Hostel Lawn (V06)</option>
+              <option value="V07">Seminar Hall (V07)</option>
+              <option value="V08">Sports Complex (V08)</option>
+              <option value="V09">Library Hall (V09)</option>
             </select>
           </div>
           <div>
@@ -328,11 +332,15 @@ export const ReportIncidentWidget: React.FC<WidgetProps> = ({ role, onRefreshTri
               onChange={(e) => setVenueId(e.target.value)}
               className="w-full px-2.5 py-1.5 rounded border border-[#E5DFD3] bg-[#FAF8F5] text-[#1A1A1A]"
             >
-              <option value="V01">Central Audi (V01)</option>
-              <option value="V02">Amphitheatre (V02)</option>
-              <option value="V03">Sports Arena (V03)</option>
-              <option value="V04">Management Block (V04)</option>
-              <option value="V06">Open Grounds (V06)</option>
+              <option value="V01">Main Stage (V01)</option>
+              <option value="V02">LT-1 (V02)</option>
+              <option value="V03">LT-2 (V03)</option>
+              <option value="V04">Amphitheatre (V04)</option>
+              <option value="V05">Quadrangle (V05)</option>
+              <option value="V06">Hostel Lawn (V06)</option>
+              <option value="V07">Seminar Hall (V07)</option>
+              <option value="V08">Sports Complex (V08)</option>
+              <option value="V09">Library Hall (V09)</option>
             </select>
           </div>
           <div>
