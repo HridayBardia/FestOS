@@ -909,57 +909,313 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let violationsCount = 0;
     const currentAllocations = [...allocations];
 
+    // Filter out delegates who are already allocated
     const unallocated = participants.filter(
       (p) => !currentAllocations.some((a) => a.participant_id === p.id && a.status !== 'vacated')
     );
 
+    // Calculate stay days for each delegate (cost optimization factor for management)
+    const contingentMap = new Map(contingents.map((c) => [c.id, c]));
+    const getStayDays = (p: Participant) => {
+      const c = contingentMap.get(p.contingent_id);
+      if (c && c.arrival_time && c.departure_time) {
+        try {
+          const diff = new Date(c.departure_time).getTime() - new Date(c.arrival_time).getTime();
+          return Math.max(1, Math.ceil(diff / (24 * 3600 * 1000)));
+        } catch {
+          return 4;
+        }
+      }
+      return 4;
+    };
+
+    // Sorting Hierarchy:
+    // 1. Accessibility needs (ground floor / elevator priority)
+    // 2. Checked-in delegates (arrived on site -> allocate immediately)
+    // 3. Longest stay days (stays on campus to save management cost)
+    // 4. College grouping (contingent_id)
     const sorted = [...unallocated].sort((a, b) => {
+      // 1. Accessibility
       if (a.accessibility_needs && !b.accessibility_needs) return -1;
       if (!a.accessibility_needs && b.accessibility_needs) return 1;
-      return 0;
+
+      // 2. Checked in priority
+      if (a.checked_in && !b.checked_in) return -1;
+      if (!a.checked_in && b.checked_in) return 1;
+
+      // 3. Longest stay priority
+      const daysA = getStayDays(a);
+      const daysB = getStayDays(b);
+      if (daysB !== daysA) return daysB - daysA;
+
+      // 4. College cohort grouping
+      return (a.contingent_id || '').localeCompare(b.contingent_id || '');
     });
 
-    sorted.forEach((participant, idx) => {
-      let candidateHostel = hostels.find((h) => {
-        if (h.status !== 'operational') return false;
-        if (h.gender_allowed !== 'all' && h.gender_allowed !== participant.gender) return false;
-        if (participant.accessibility_needs && !h.has_elevator) return false;
-        return h.occupied_beds < h.total_capacity;
-      });
+    // Build tracking maps for campus rooms and external rooms
+    // Enforces: No boys and girls in the same room under ANY circumstance
+    const campusRoomsState = new Map<string, {
+      hostelId: string;
+      roomNumber: string;
+      floor: string;
+      gender: 'male' | 'female' | null;
+      bedA: { participantId: string; contingentId: string } | null;
+      bedB: { participantId: string; contingentId: string } | null;
+    }>();
 
-      if (!candidateHostel && participant.accessibility_needs) {
-        candidateHostel = hostels.find((h) => h.id === 'hostel-05');
+    // Initialize all rooms for operational campus hostels
+    hostels.forEach((h) => {
+      if (h.status === 'closed') return;
+      const floors = ['G', '1', '2', '3'].slice(0, h.floor_count + 1);
+      floors.forEach((f) => {
+        for (let i = 1; i <= 8; i++) {
+          const roomNumber = `${f}${i < 10 ? '0' + i : i}`;
+          const key = `${h.id}_${roomNumber}`;
+          const initialGender = h.gender_allowed === 'all' ? null : (h.gender_allowed as 'male' | 'female');
+          campusRoomsState.set(key, {
+            hostelId: h.id,
+            roomNumber,
+            floor: f,
+            gender: initialGender,
+            bedA: null,
+            bedB: null
+          });
+        }
+      });
+    });
+
+    // Populate existing campus allocations
+    currentAllocations.forEach((alloc) => {
+      if (!alloc.hostel_id || alloc.status === 'vacated') return;
+      const key = `${alloc.hostel_id}_${alloc.room_number}`;
+      const r = campusRoomsState.get(key);
+      const p = participants.find((part) => part.id === alloc.participant_id);
+      if (r && p) {
+        if (!r.gender) r.gender = (p.gender === 'female' ? 'female' : 'male');
+        if (alloc.bed_number === 'A') r.bedA = { participantId: p.id, contingentId: p.contingent_id };
+        else r.bedB = { participantId: p.id, contingentId: p.contingent_id };
+      }
+    });
+
+    // Initialize external rooms state (12 rooms per external stay)
+    const externalRoomsState = new Map<string, {
+      stayId: string;
+      roomNumber: string;
+      gender: 'male' | 'female' | null;
+      bedA: { participantId: string; contingentId: string } | null;
+      bedB: { participantId: string; contingentId: string } | null;
+    }>();
+
+    externalStays.forEach((s) => {
+      if (s.status === 'full') return;
+      for (let i = 101; i <= 112; i++) {
+        const roomNumber = String(i);
+        const key = `${s.id}_${roomNumber}`;
+        externalRoomsState.set(key, {
+          stayId: s.id,
+          roomNumber,
+          gender: null,
+          bedA: null,
+          bedB: null
+        });
+      }
+    });
+
+    // Populate existing external allocations
+    currentAllocations.forEach((alloc) => {
+      if (!alloc.external_stay_id || alloc.status === 'vacated') return;
+      const key = `${alloc.external_stay_id}_${alloc.room_number}`;
+      const r = externalRoomsState.get(key);
+      const p = participants.find((part) => part.id === alloc.participant_id);
+      if (r && p) {
+        if (!r.gender) r.gender = (p.gender === 'female' ? 'female' : 'male');
+        if (alloc.bed_number === 'A') r.bedA = { participantId: p.id, contingentId: p.contingent_id };
+        else r.bedB = { participantId: p.id, contingentId: p.contingent_id };
+      }
+    });
+
+    // Allocate sorted delegates with strict constraints
+    const campusRoomsList = Array.from(campusRoomsState.values());
+    const externalRoomsList = Array.from(externalRoomsState.values());
+
+    sorted.forEach((participant) => {
+      const partGender = (participant.gender === 'female' ? 'female' : 'male') as 'male' | 'female';
+      let allocated = false;
+
+      // 1. Campus Allocation: Try matching same contingent cohort in an open bed of same gender
+      for (const r of campusRoomsList) {
+        const hostel = hostels.find((h) => h.id === r.hostelId);
+        if (!hostel || hostel.status === 'closed') continue;
+
+        // Strict gender check: NEVER mix male and female in the same room
+        if (r.gender && r.gender !== partGender) continue;
+        if (hostel.gender_allowed !== 'all' && hostel.gender_allowed !== partGender) continue;
+
+        // Accessibility requirement check
+        if (participant.accessibility_needs) {
+          if (!hostel.has_elevator && r.floor !== 'G') continue;
+        }
+
+        const roommate = r.bedA || r.bedB;
+        const freeBed = !r.bedA ? 'A' : (!r.bedB ? 'B' : null);
+        if (roommate && freeBed && roommate.contingentId === participant.contingent_id) {
+          if (freeBed === 'A') r.bedA = { participantId: participant.id, contingentId: participant.contingent_id };
+          else r.bedB = { participantId: participant.id, contingentId: participant.contingent_id };
+          r.gender = partGender;
+
+          currentAllocations.push({
+            id: `auto-alloc-${participant.id}`,
+            participant_id: participant.id,
+            hostel_id: r.hostelId,
+            room_number: r.roomNumber,
+            bed_number: freeBed,
+            status: 'confirmed',
+            allocated_at: new Date().toISOString(),
+            is_override: false
+          });
+          allocated = true;
+          allocatedCount++;
+          break;
+        }
       }
 
-      if (candidateHostel) {
-        const floor = participant.accessibility_needs ? 'G' : '2';
-        const roomNum = `${floor}0${(idx % 12) + 1}`;
-        const bedNum = idx % 2 === 0 ? 'A' : 'B';
+      // 2. Campus Allocation: Try empty room in matching gender hostel
+      if (!allocated) {
+        for (const r of campusRoomsList) {
+          const hostel = hostels.find((h) => h.id === r.hostelId);
+          if (!hostel || hostel.status === 'closed') continue;
 
-        currentAllocations.push({
-          id: `auto-alloc-${participant.id}`,
-          participant_id: participant.id,
-          hostel_id: candidateHostel.id,
-          room_number: roomNum,
-          bed_number: bedNum,
-          status: 'confirmed',
-          allocated_at: new Date().toISOString(),
-          is_override: false,
-        });
+          // Strict gender check
+          if (r.gender && r.gender !== partGender) continue;
+          if (hostel.gender_allowed !== 'all' && hostel.gender_allowed !== partGender) continue;
 
-        candidateHostel.occupied_beds += 1;
-        allocatedCount++;
-      } else {
+          // Accessibility check
+          if (participant.accessibility_needs) {
+            if (!hostel.has_elevator && r.floor !== 'G') continue;
+          }
+
+          const freeBed = !r.bedA ? 'A' : (!r.bedB ? 'B' : null);
+          if (freeBed) {
+            if (freeBed === 'A') r.bedA = { participantId: participant.id, contingentId: participant.contingent_id };
+            else r.bedB = { participantId: participant.id, contingentId: participant.contingent_id };
+            r.gender = partGender;
+
+            currentAllocations.push({
+              id: `auto-alloc-${participant.id}`,
+              participant_id: participant.id,
+              hostel_id: r.hostelId,
+              room_number: r.roomNumber,
+              bed_number: freeBed,
+              status: 'confirmed',
+              allocated_at: new Date().toISOString(),
+              is_override: false
+            });
+            allocated = true;
+            allocatedCount++;
+            break;
+          }
+        }
+      }
+
+      // 3. Overflow to External Stays when campus hostels are filled
+      if (!allocated && externalStays.length > 0) {
+        // A. Same contingent in external stay
+        for (const r of externalRoomsList) {
+          const stay = externalStays.find((s) => s.id === r.stayId);
+          if (!stay || stay.status === 'full') continue;
+
+          if (r.gender && r.gender !== partGender) continue;
+
+          const roommate = r.bedA || r.bedB;
+          const freeBed = !r.bedA ? 'A' : (!r.bedB ? 'B' : null);
+          if (roommate && freeBed && roommate.contingentId === participant.contingent_id) {
+            if (freeBed === 'A') r.bedA = { participantId: participant.id, contingentId: participant.contingent_id };
+            else r.bedB = { participantId: participant.id, contingentId: participant.contingent_id };
+            r.gender = partGender;
+
+            currentAllocations.push({
+              id: `auto-ext-${participant.id}`,
+              participant_id: participant.id,
+              hostel_id: null,
+              external_stay_id: r.stayId,
+              room_number: r.roomNumber,
+              bed_number: freeBed,
+              status: 'confirmed',
+              allocated_at: new Date().toISOString(),
+              is_override: true,
+              override_reason: 'Campus capacity full. Auto-allocated to overflow stay with contingent cohort.'
+            });
+            allocated = true;
+            allocatedCount++;
+            break;
+          }
+        }
+
+        // B. Any available bed in external stay (strict single-gender room)
+        if (!allocated) {
+          for (const r of externalRoomsList) {
+            const stay = externalStays.find((s) => s.id === r.stayId);
+            if (!stay || stay.status === 'full') continue;
+
+            if (r.gender && r.gender !== partGender) continue;
+
+            const freeBed = !r.bedA ? 'A' : (!r.bedB ? 'B' : null);
+            if (freeBed) {
+              if (freeBed === 'A') r.bedA = { participantId: participant.id, contingentId: participant.contingent_id };
+              else r.bedB = { participantId: participant.id, contingentId: participant.contingent_id };
+              r.gender = partGender;
+
+              currentAllocations.push({
+                id: `auto-ext-${participant.id}`,
+                participant_id: participant.id,
+                hostel_id: null,
+                external_stay_id: r.stayId,
+                room_number: r.roomNumber,
+                bed_number: freeBed,
+                status: 'confirmed',
+                allocated_at: new Date().toISOString(),
+                is_override: true,
+                override_reason: 'Campus capacity full. Auto-allocated to overflow stay.'
+              });
+              allocated = true;
+              allocatedCount++;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!allocated) {
         violationsCount++;
       }
     });
 
+    // Update occupied beds accurately
+    const updatedHostels = hostels.map((h) => {
+      const count = currentAllocations.filter((a) => a.hostel_id === h.id && a.status !== 'vacated').length;
+      return { ...h, occupied_beds: count };
+    });
+
+    const updatedExternal = externalStays.map((s) => {
+      const count = currentAllocations.filter((a) => a.external_stay_id === s.id && a.status !== 'vacated').length;
+      return {
+        ...s,
+        occupied_beds: count,
+        status: count >= s.total_capacity ? ('full' as const) : count > 0 ? ('active' as const) : ('standby' as const)
+      };
+    });
+
     setAllocations(currentAllocations);
-    setHostels([...hostels]);
-    broadcastStateUpdate({ allocations: currentAllocations, hostels: [...hostels] });
+    setHostels(updatedHostels);
+    setExternalStays(updatedExternal);
+    broadcastStateUpdate({
+      allocations: currentAllocations,
+      hostels: updatedHostels,
+      externalStays: updatedExternal
+    });
 
     return { allocatedCount, violationsCount };
-  }, [allocations, participants, hostels, broadcastStateUpdate]);
+  }, [allocations, participants, hostels, externalStays, contingents, broadcastStateUpdate]);
 
   return (
     <FestContext.Provider

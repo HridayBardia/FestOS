@@ -1,5 +1,9 @@
 'use client';
 
+// Accommodation Matrix View
+// Real-time policy enforcement: strict gender segregation, accessibility prioritization, and external stay overflow
+// Zero em dashes or en dashes in any UI copy or code
+
 import React, { useState, useMemo } from 'react';
 import {
   Hotel,
@@ -13,10 +17,15 @@ import {
   Filter,
   Search,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  ArrowRightLeft,
+  Clock,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { useFest } from '@/context/FestContext';
 import { OverrideModal } from './OverrideModal';
+import { ReassignModal } from './ReassignModal';
 import { Participant } from '@/types/database';
 
 export const AccommodationView: React.FC = () => {
@@ -26,6 +35,7 @@ export const AccommodationView: React.FC = () => {
     allocations,
     participants,
     contingents,
+    checkedInCount,
     allocateRoom,
     allocateExternalStay,
     deallocateParticipant,
@@ -46,15 +56,40 @@ export const AccommodationView: React.FC = () => {
     targetName: string;
   } | null>(null);
 
+  // Reassignment Modal State
+  const [isReassignOpen, setIsReassignOpen] = useState(false);
+  const [reassignTarget, setReassignTarget] = useState<{
+    participant: Participant;
+    currentLocation: string;
+  } | null>(null);
+
   const [selectedBedToAssign, setSelectedBedToAssign] = useState<{
     roomNumber: string;
     bedNumber: string;
   } | null>(null);
 
+  // Unallocated drawer filters
+  const [drawerSearch, setDrawerSearch] = useState('');
+  const [drawerGender, setDrawerGender] = useState<'all' | 'female' | 'male'>('all');
+  const [drawerCheckedInOnly, setDrawerCheckedInOnly] = useState(false);
+  const [drawerAccessibilityOnly, setDrawerAccessibilityOnly] = useState(false);
+
   const activeHostel = hostels.find((h) => h.id === selectedFacilityId);
   const activeExternalStay = externalStays.find((s) => s.id === selectedFacilityId);
 
-  // Elegant Luxury Contingent Palette
+  // Cross-verification KPI counts
+  const totalCampusCapacity = useMemo(() => hostels.reduce((sum, h) => sum + h.total_capacity, 0), [hostels]);
+  const totalCampusOccupied = useMemo(
+    () => allocations.filter((a) => a.hostel_id && a.status !== 'vacated').length,
+    [allocations]
+  );
+  const totalExternalCapacity = useMemo(() => externalStays.reduce((sum, s) => sum + s.total_capacity, 0), [externalStays]);
+  const totalExternalOccupied = useMemo(
+    () => allocations.filter((a) => a.external_stay_id && a.status !== 'vacated').length,
+    [allocations]
+  );
+
+  // Contingent styling map
   const contingentColorMap = useMemo(() => {
     const styles = [
       'bg-[#F6EFE6] border-[#E5DFD3] text-[#A3703F]',
@@ -108,6 +143,29 @@ export const AccommodationView: React.FC = () => {
     return participants.filter((p) => !allocatedParticipantIds.has(p.id));
   }, [participants, allocations]);
 
+  // Filtered unallocated queue
+  const filteredUnallocated = useMemo(() => {
+    return unallocatedParticipants.filter((p) => {
+      const q = drawerSearch.toLowerCase();
+      const cnt = contingents.find((c) => c.id === p.contingent_id);
+      const matchesSearch =
+        !q ||
+        p.id.toLowerCase().includes(q) ||
+        p.name.toLowerCase().includes(q) ||
+        (cnt && cnt.name.toLowerCase().includes(q));
+
+      if (!matchesSearch) return false;
+      if (drawerGender !== 'all' && p.gender !== drawerGender) return false;
+      if (drawerCheckedInOnly && !p.checked_in) return false;
+      if (drawerAccessibilityOnly && !p.accessibility_needs) return false;
+      return true;
+    });
+  }, [unallocatedParticipants, contingents, drawerSearch, drawerGender, drawerCheckedInOnly, drawerAccessibilityOnly]);
+
+  const checkedInUnallocatedCount = useMemo(() => {
+    return unallocatedParticipants.filter((p) => p.checked_in).length;
+  }, [unallocatedParticipants]);
+
   // Handle Bed Allocation Attempt
   const handleAssignBed = async (participant: Participant, roomNumber: string, bedNumber: string) => {
     if (selectedFacilityType === 'external') {
@@ -128,11 +186,23 @@ export const AccommodationView: React.FC = () => {
     let violationMessage = '';
 
     if (activeHostel.status === 'closed') {
-      violationMessage = `Hostel ${activeHostel.name} is marked CLOSED under active emergency / disruption protocol.`;
+      violationMessage = `Hostel ${activeHostel.name} is marked CLOSED under active emergency protocol.`;
     } else if (activeHostel.gender_allowed !== 'all' && activeHostel.gender_allowed !== participant.gender) {
       violationMessage = `GENDER SEGREGATION CONSTRAINT: ${activeHostel.name} is designated as ${activeHostel.gender_allowed.toUpperCase()} ONLY. Selected delegate is registered as ${participant.gender.toUpperCase()}.`;
     } else if (participant.accessibility_needs && !activeHostel.has_elevator && !roomNumber.startsWith('G') && !roomNumber.startsWith('0')) {
       violationMessage = `ACCESSIBILITY CONSTRAINT: ${participant.name} has recorded mobility/accessibility needs ("${participant.accessibility_note || 'Ground floor required'}"). Room ${roomNumber} is on an upper floor without elevator access.`;
+    }
+
+    // Room-level gender check: verify other bed in this room
+    const otherBed = bedNumber === 'A' ? 'B' : 'A';
+    const otherAlloc = allocations.find(
+      (a) => a.hostel_id === activeHostel.id && a.room_number === roomNumber && a.bed_number === otherBed && a.status !== 'vacated'
+    );
+    if (otherAlloc) {
+      const roommate = participants.find((p) => p.id === otherAlloc.participant_id);
+      if (roommate && roommate.gender !== participant.gender) {
+        violationMessage = `STRICT ROOM GENDER CONSTRAINT: Room ${roomNumber} Bed ${otherBed} is occupied by ${roommate.name} (${roommate.gender.toUpperCase()}). Boys and girls cannot be allocated in the same room.`;
+      }
     }
 
     if (violationMessage) {
@@ -166,6 +236,21 @@ export const AccommodationView: React.FC = () => {
     setSelectedBedToAssign(null);
   };
 
+  const handleConfirmReassign = async (
+    participantId: string,
+    facilityType: 'hostel' | 'external',
+    facilityId: string,
+    roomNumber: string,
+    bedNumber: string,
+    reassignReason: string
+  ) => {
+    if (facilityType === 'hostel') {
+      await allocateRoom(participantId, facilityId, roomNumber, bedNumber, true, reassignReason, 'Hospitality Lead');
+    } else {
+      await allocateExternalStay(participantId, facilityId, roomNumber, bedNumber, reassignReason, 'Hospitality Lead');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -179,26 +264,79 @@ export const AccommodationView: React.FC = () => {
           </div>
           <h2 className="font-serif text-2xl font-bold text-[#1A1A1A]">Hostel & Overflow Allocation Matrix</h2>
           <p className="text-xs text-[#6B655E] mt-0.5">
-            Real-time constraint engine enforcing gender segregation, wheelchair/ground-floor priority, and delegation grouping.
+            Strict gender separation, accessibility prioritization, longest-stay campus allocation, and automated external overflow.
           </p>
         </div>
 
         <button
           onClick={() => {
             const res = autoAllocateAll();
-            alert(`Auto-Allocation Complete: ${res.allocatedCount} delegate(s) assigned. ${res.violationsCount} constraint conflicts flagged.`);
+            alert(`Auto-Allocation Run Completed:\n- ${res.allocatedCount} delegate(s) successfully assigned.\n- Strict single-gender rooms enforced.\n- Longest stays placed in campus hostels; overflow routed to external stays.\n- ${res.violationsCount} unassigned due to closed or zero-capacity facilities.`);
           }}
           className="px-4 py-2.5 rounded-xl bg-[#A3703F] hover:bg-[#8C6D36] text-white text-xs font-bold shadow-md shadow-[#A3703F]/20 flex items-center gap-2 transition-all active:scale-95 shrink-0"
         >
           <Sparkles className="w-4 h-4 text-[#F6EFE6]" />
-          <span>Auto-Allocate Engine</span>
+          <span>Run Auto-Allocate Engine</span>
         </button>
       </div>
 
+      {/* Cross-Verification Reconciliation Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="p-3.5 rounded-xl bg-white border border-[#E5DFD3] shadow-xs">
+          <p className="text-[10px] uppercase font-bold text-[#8F8982]">Total Delegates</p>
+          <p className="text-xl font-serif font-bold text-[#1A1A1A] mt-0.5">{participants.length}</p>
+          <p className="text-[10px] text-[#6B655E] font-mono mt-0.5">Canonical Pool</p>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200 shadow-xs">
+          <p className="text-[10px] uppercase font-bold text-emerald-800">Checked-In (Desk)</p>
+          <p className="text-xl font-serif font-bold text-emerald-900 mt-0.5">{checkedInCount}</p>
+          <p className="text-[10px] text-emerald-700 font-mono mt-0.5">Synchronized Live</p>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-white border border-[#E5DFD3] shadow-xs">
+          <p className="text-[10px] uppercase font-bold text-[#8F8982]">Campus Hostels</p>
+          <p className="text-xl font-serif font-bold text-[#1A1A1A] mt-0.5">
+            {totalCampusOccupied} <span className="text-xs text-[#8F8982] font-normal">/ {totalCampusCapacity}</span>
+          </p>
+          <p className="text-[10px] text-[#6B655E] font-mono mt-0.5">
+            {totalCampusCapacity > 0 ? Math.round((totalCampusOccupied / totalCampusCapacity) * 100) : 0}% Occupancy
+          </p>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-white border border-[#E5DFD3] shadow-xs">
+          <p className="text-[10px] uppercase font-bold text-[#A3703F]">External Overflow</p>
+          <p className="text-xl font-serif font-bold text-[#A3703F] mt-0.5">
+            {totalExternalOccupied} <span className="text-xs text-[#8F8982] font-normal">/ {totalExternalCapacity}</span>
+          </p>
+          <p className="text-[10px] text-[#6B655E] font-mono mt-0.5">
+            {totalExternalCapacity > 0 ? Math.round((totalExternalOccupied / totalExternalCapacity) * 100) : 0}% Overflow Used
+          </p>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-white border border-[#E5DFD3] shadow-xs">
+          <p className="text-[10px] uppercase font-bold text-[#8F8982]">Unallocated</p>
+          <p className="text-xl font-serif font-bold text-amber-900 mt-0.5">{unallocatedParticipants.length}</p>
+          <p className="text-[10px] text-[#6B655E] font-mono mt-0.5">Pending Bed Assignment</p>
+        </div>
+
+        <div className={`p-3.5 rounded-xl border shadow-xs ${
+          checkedInUnallocatedCount > 0
+            ? 'bg-amber-50/60 border-amber-300 text-amber-900'
+            : 'bg-emerald-50/60 border-emerald-300 text-emerald-900'
+        }`}>
+          <p className="text-[10px] uppercase font-bold">Checked-In Needing Bed</p>
+          <p className="text-xl font-serif font-bold mt-0.5">{checkedInUnallocatedCount}</p>
+          <p className="text-[10px] font-mono mt-0.5">
+            {checkedInUnallocatedCount > 0 ? 'Urgent Priority' : 'All Arrived Housed'}
+          </p>
+        </div>
+      </div>
+
       {/* Facility Switcher Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E5DFD3] pb-3">
+      <div className="space-y-2 border-b border-[#E5DFD3] pb-3">
         {/* Hostel Selector Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <span className="text-xs font-bold uppercase tracking-wider text-[#8F8982] mr-1 shrink-0">
             Campus Hostels:
           </span>
@@ -222,7 +360,7 @@ export const AccommodationView: React.FC = () => {
                 <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
                   isSelected ? 'bg-white/20 text-white' : 'bg-[#FAF8F5] text-[#8F8982]'
                 }`}>
-                  {h.gender_allowed.toUpperCase()}
+                  {h.gender_allowed.toUpperCase()} ({h.occupied_beds}/{h.total_capacity})
                 </span>
                 {isClosed && <span className="text-[10px] text-[#7C2D2A] font-bold">!CLOSED</span>}
               </button>
@@ -264,7 +402,7 @@ export const AccommodationView: React.FC = () => {
       <div className="bg-white border border-[#E5DFD3] p-4 rounded-2xl shadow-luxury flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-3.5">
           <div className="p-2.5 rounded-xl bg-[#F6EFE6] text-[#A3703F] border border-[#E5DFD3]">
-            <Building className="w-5 h-5" />
+            {selectedFacilityType === 'hostel' ? <Building className="w-5 h-5" /> : <Hotel className="w-5 h-5" />}
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -283,8 +421,8 @@ export const AccommodationView: React.FC = () => {
             </div>
             <p className="text-[#6B655E] mt-0.5 text-xs">
               {selectedFacilityType === 'hostel'
-                ? `${activeHostel?.notes || ''} · Elevator: ${activeHostel?.has_elevator ? 'YES' : 'NO'}`
-                : `${activeExternalStay?.location} · Contact: ${activeExternalStay?.contact_person} (${activeExternalStay?.contact_phone})`}
+                ? `${activeHostel?.notes || ''} · Gender Allowed: ${activeHostel?.gender_allowed.toUpperCase()} · Elevator: ${activeHostel?.has_elevator ? 'YES' : 'NO'}`
+                : `${activeExternalStay?.location} · Contact: ${activeExternalStay?.contact_person} (${activeExternalStay?.contact_phone}) · Rate: ₹${activeExternalStay?.cost_per_night}/night`}
             </p>
           </div>
         </div>
@@ -369,19 +507,29 @@ export const AccommodationView: React.FC = () => {
               const cntB = partB ? contingents.find((c) => c.id === partB.contingent_id) : null;
 
               const isGround = floor === 'G' || roomNumber.startsWith('G');
+              const roomGender = partA?.gender || partB?.gender;
 
               return (
                 <div
                   key={roomNumber}
-                  className="bg-white border border-[#E5DFD3] rounded-2xl p-3.5 shadow-card hover:shadow-luxury transition-all"
+                  className="bg-white border border-[#E5DFD3] rounded-2xl p-3.5 shadow-card hover:shadow-luxury transition-all space-y-2.5"
                 >
                   {/* Room Header */}
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#EFEBE3]">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#EFEBE3]">
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono font-bold text-[#1A1A1A] text-xs">Rm {roomNumber}</span>
                       {isGround && (
                         <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase bg-[#EAF3EC] text-[#2D5A3E] border border-[#C7E2CE]">
                           Ground
+                        </span>
+                      )}
+                      {roomGender && (
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
+                          roomGender === 'female'
+                            ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                            : 'bg-blue-50 text-blue-800 border border-blue-200'
+                        }`}>
+                          {roomGender}
                         </span>
                       )}
                     </div>
@@ -407,12 +555,26 @@ export const AccommodationView: React.FC = () => {
                       <div className="flex items-center justify-between text-[11px] mb-1">
                         <span className="font-mono font-bold text-[#8F8982]">Bed A</span>
                         {partA ? (
-                          <button
-                            onClick={() => deallocateParticipant(partA.id, 'Organizer deallocated bed')}
-                            className="text-[10px] text-[#7C2D2A] hover:underline font-semibold"
-                          >
-                            Vacate
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setReassignTarget({
+                                  participant: partA,
+                                  currentLocation: `${selectedFacilityType === 'hostel' ? activeHostel?.name : activeExternalStay?.name} · Room ${roomNumber} (Bed A)`
+                                });
+                                setIsReassignOpen(true);
+                              }}
+                              className="text-[10px] text-[#A3703F] hover:underline font-bold"
+                            >
+                              Change
+                            </button>
+                            <button
+                              onClick={() => deallocateParticipant(partA.id, 'Organizer deallocated bed')}
+                              className="text-[10px] text-[#7C2D2A] hover:underline font-semibold"
+                            >
+                              Vacate
+                            </button>
+                          </div>
                         ) : (
                           <button
                             onClick={() => setSelectedBedToAssign({ roomNumber, bedNumber: 'A' })}
@@ -427,13 +589,18 @@ export const AccommodationView: React.FC = () => {
                         <div>
                           <p className="font-bold text-[#1A1A1A] text-xs truncate">{partA.name}</p>
                           <p className="text-[10px] text-[#6B655E] truncate">{cntA?.name || 'Delegate'}</p>
-                          <div className="mt-1.5 flex items-center gap-1.5">
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                             <span className="text-[9px] uppercase font-mono px-1 rounded bg-white text-[#6B655E] border border-[#E5DFD3]">
                               {partA.gender}
                             </span>
+                            {partA.checked_in && (
+                              <span className="text-[9px] px-1 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                                ✓ Checked In
+                              </span>
+                            )}
                             {partA.accessibility_needs && (
                               <span className="text-[9px] px-1 rounded bg-[#FAF0E4] text-[#7A4E1D] font-bold">
-                                Acc
+                                ♿ Acc
                               </span>
                             )}
                             {allocA?.is_override && (
@@ -465,12 +632,26 @@ export const AccommodationView: React.FC = () => {
                       <div className="flex items-center justify-between text-[11px] mb-1">
                         <span className="font-mono font-bold text-[#8F8982]">Bed B</span>
                         {partB ? (
-                          <button
-                            onClick={() => deallocateParticipant(partB.id, 'Organizer deallocated bed')}
-                            className="text-[10px] text-[#7C2D2A] hover:underline font-semibold"
-                          >
-                            Vacate
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setReassignTarget({
+                                  participant: partB,
+                                  currentLocation: `${selectedFacilityType === 'hostel' ? activeHostel?.name : activeExternalStay?.name} · Room ${roomNumber} (Bed B)`
+                                });
+                                setIsReassignOpen(true);
+                              }}
+                              className="text-[10px] text-[#A3703F] hover:underline font-bold"
+                            >
+                              Change
+                            </button>
+                            <button
+                              onClick={() => deallocateParticipant(partB.id, 'Organizer deallocated bed')}
+                              className="text-[10px] text-[#7C2D2A] hover:underline font-semibold"
+                            >
+                              Vacate
+                            </button>
+                          </div>
                         ) : (
                           <button
                             onClick={() => setSelectedBedToAssign({ roomNumber, bedNumber: 'B' })}
@@ -485,13 +666,18 @@ export const AccommodationView: React.FC = () => {
                         <div>
                           <p className="font-bold text-[#1A1A1A] text-xs truncate">{partB.name}</p>
                           <p className="text-[10px] text-[#6B655E] truncate">{cntB?.name || 'Delegate'}</p>
-                          <div className="mt-1.5 flex items-center gap-1.5">
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                             <span className="text-[9px] uppercase font-mono px-1 rounded bg-white text-[#6B655E] border border-[#E5DFD3]">
                               {partB.gender}
                             </span>
+                            {partB.checked_in && (
+                              <span className="text-[9px] px-1 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                                ✓ Checked In
+                              </span>
+                            )}
                             {partB.accessibility_needs && (
                               <span className="text-[9px] px-1 rounded bg-[#FAF0E4] text-[#7A4E1D] font-bold">
-                                Acc
+                                ♿ Acc
                               </span>
                             )}
                             {allocB?.is_override && (
@@ -514,35 +700,104 @@ export const AccommodationView: React.FC = () => {
 
         {/* Unallocated Delegates Drawer */}
         <div className="space-y-4">
-          <div className="bg-white border border-[#E5DFD3] rounded-2xl p-5 shadow-luxury">
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-white border border-[#E5DFD3] rounded-2xl p-5 shadow-luxury space-y-3">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#A3703F]" />
                 <h3 className="font-serif font-bold text-[#1A1A1A] text-sm">
-                  Unallocated Delegates ({unallocatedParticipants.length})
+                  Unallocated Delegates ({filteredUnallocated.length})
                 </h3>
               </div>
               <span className="text-[10px] font-mono text-[#8F8982] uppercase bg-[#FAF8F5] px-1.5 py-0.5 rounded border border-[#E5DFD3]">
-                Pending
+                {unallocatedParticipants.length} Total
               </span>
             </div>
 
-            <p className="text-xs text-[#6B655E] mb-3">
+            {/* Quick Overflow Alert and External Action */}
+            <div className="p-3 rounded-xl bg-[#FAF0E4] border border-[#EED5BC] text-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-amber-900 font-bold">
+                <Hotel className="w-3.5 h-3.5" />
+                <span>External Stays Overflow Active</span>
+              </div>
+              <p className="text-[11px] text-[#7A4E1D]">
+                Campus hostels nearing limit. You can assign delegates directly into overflow hotels (Crescent Spa, Radisson Blu, Papaya Tree).
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedFacilityType('external');
+                  setSelectedFacilityId(externalStays[0]?.id || 'ext-01');
+                }}
+                className="w-full mt-1 py-1 text-[11px] bg-white text-[#A3703F] border border-[#A3703F] font-bold rounded-lg hover:bg-[#FAF8F5] transition-all"
+              >
+                Switch View to External Overflow Stays →
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search unallocated..."
+                value={drawerSearch}
+                onChange={(e) => setDrawerSearch(e.target.value)}
+                className="w-full text-xs px-2.5 py-1.5 pl-7 rounded-lg border border-[#E5DFD3] bg-[#FAF8F5] text-[#1A1A1A] focus:outline-none focus:border-[#A3703F]"
+              />
+              <Search className="w-3.5 h-3.5 text-[#8F8982] absolute left-2 top-2" />
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+              <button
+                onClick={() => setDrawerGender(drawerGender === 'female' ? 'all' : 'female')}
+                className={`px-2 py-0.5 rounded-full border transition-all ${
+                  drawerGender === 'female' ? 'bg-rose-100 text-rose-900 border-rose-300 font-bold' : 'bg-white border-[#E5DFD3] text-[#6B655E]'
+                }`}
+              >
+                Female Only
+              </button>
+              <button
+                onClick={() => setDrawerGender(drawerGender === 'male' ? 'all' : 'male')}
+                className={`px-2 py-0.5 rounded-full border transition-all ${
+                  drawerGender === 'male' ? 'bg-blue-100 text-blue-900 border-blue-300 font-bold' : 'bg-white border-[#E5DFD3] text-[#6B655E]'
+                }`}
+              >
+                Male Only
+              </button>
+              <button
+                onClick={() => setDrawerCheckedInOnly(!drawerCheckedInOnly)}
+                className={`px-2 py-0.5 rounded-full border transition-all ${
+                  drawerCheckedInOnly ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' : 'bg-white border-[#E5DFD3] text-[#6B655E]'
+                }`}
+              >
+                Checked In Only
+              </button>
+              <button
+                onClick={() => setDrawerAccessibilityOnly(!drawerAccessibilityOnly)}
+                className={`px-2 py-0.5 rounded-full border transition-all ${
+                  drawerAccessibilityOnly ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold' : 'bg-white border-[#E5DFD3] text-[#6B655E]'
+                }`}
+              >
+                ♿ Needs Acc
+              </button>
+            </div>
+
+            <p className="text-xs text-[#6B655E]">
               Click a delegate to allocate to{' '}
               {selectedBedToAssign
                 ? `Room ${selectedBedToAssign.roomNumber} (${selectedBedToAssign.bedNumber})`
                 : 'first available room'}
             </p>
 
-            {unallocatedParticipants.length === 0 ? (
+            {filteredUnallocated.length === 0 ? (
               <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5DFD3] text-center">
                 <CheckCircle className="w-6 h-6 text-[#2D5A3E] mx-auto mb-1.5" />
-                <p className="text-xs font-semibold text-[#1A1A1A]">All Delegates Allocated</p>
-                <p className="text-[10px] text-[#8F8982] mt-0.5">100% bed occupancy reached.</p>
+                <p className="text-xs font-semibold text-[#1A1A1A]">No Matching Unallocated</p>
+                <p className="text-[10px] text-[#8F8982] mt-0.5">Adjust filter criteria above.</p>
               </div>
             ) : (
-              <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
-                {unallocatedParticipants.map((p) => {
+              <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                {filteredUnallocated.map((p) => {
                   const cnt = contingents.find((c) => c.id === p.contingent_id);
                   return (
                     <div
@@ -552,26 +807,35 @@ export const AccommodationView: React.FC = () => {
                         const targetBed = selectedBedToAssign?.bedNumber || 'A';
                         handleAssignBed(p, targetRoom, targetBed);
                       }}
-                      className="p-3 rounded-xl bg-[#FAF8F5] hover:bg-white border border-[#E5DFD3] hover:border-[#A3703F] cursor-pointer transition-all group text-xs shadow-sm"
+                      className="p-3 rounded-xl bg-[#FAF8F5] hover:bg-white border border-[#E5DFD3] hover:border-[#A3703F] cursor-pointer transition-all group text-xs shadow-xs space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-[#1A1A1A] group-hover:text-[#A3703F]">{p.name}</span>
-                        <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-white text-[#6B655E] border border-[#E5DFD3]">
-                          {p.gender}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          {p.checked_in && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                              ✓ Checked In
+                            </span>
+                          )}
+                          <span className={`text-[10px] uppercase font-mono px-1.5 py-0.2 rounded border ${
+                            p.gender === 'female' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-blue-50 text-blue-800 border-blue-200'
+                          }`}>
+                            {p.gender}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-[#6B655E] mt-0.5 truncate">{cnt?.name}</p>
+                      <p className="text-[11px] text-[#6B655E] truncate">{cnt?.name}</p>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-white text-[#6B655E] border border-[#E5DFD3] capitalize font-medium">
                           {p.role}
                         </span>
                         {p.accessibility_needs && (
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#FAF0E4] text-[#7A4E1D] font-bold border border-[#EED5BC]">
-                            ♿ Accessibility Req
+                            ♿ Acc Req
                           </span>
                         )}
-                        {p.dietary_requirements !== 'none' && (
+                        {p.dietary_requirements && p.dietary_requirements !== 'none' && (
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#EAF3EC] text-[#2D5A3E] uppercase font-bold border border-[#C7E2CE]">
                             {p.dietary_requirements}
                           </span>
@@ -598,6 +862,24 @@ export const AccommodationView: React.FC = () => {
           participantName={pendingAllocation.participant.name}
           targetLocation={pendingAllocation.targetName}
           onConfirmOverride={handleConfirmOverride}
+        />
+      )}
+
+      {/* Reassign / Change Bed Modal */}
+      {reassignTarget && (
+        <ReassignModal
+          isOpen={isReassignOpen}
+          onClose={() => {
+            setIsReassignOpen(false);
+            setReassignTarget(null);
+          }}
+          participant={reassignTarget.participant}
+          currentLocation={reassignTarget.currentLocation}
+          hostels={hostels}
+          externalStays={externalStays}
+          allocations={allocations}
+          participants={participants}
+          onConfirmReassign={handleConfirmReassign}
         />
       )}
     </div>
