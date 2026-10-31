@@ -125,7 +125,7 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeDisruptions, setActiveDisruptions] = useState<string[]>([]);
 
   const [participantsCount, setParticipantsCount] = useState<number>(2836);
-  const [checkedInCount, setCheckedInCount] = useState<number>(1420);
+  const [checkedInCount, setCheckedInCount] = useState<number>(0);
   const [auditCount, setAuditCount] = useState<number>(INITIAL_AUDIT_LOGS.length);
   const [contingentsCount, setContingentsCount] = useState<number>(INITIAL_CONTINGENTS.length);
 

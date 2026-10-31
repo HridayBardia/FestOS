@@ -10,6 +10,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { RoleDashboardView } from '@/components/dashboard/RoleDashboardView';
 import { AccommodationView } from '@/components/accommodation/AccommodationView';
 import { ParticipantsView } from '@/components/participants/ParticipantsView';
+import { FlaggedDuplicatesView } from '@/components/duplicates/FlaggedDuplicatesView';
 import { ScheduleClashView } from '@/components/schedule/ScheduleClashView';
 import { LogisticsView } from '@/components/logistics/LogisticsView';
 import { DisruptionInjectorView } from '@/components/disruptions/DisruptionInjectorView';
@@ -31,6 +32,7 @@ export const PortalClient: React.FC<PortalClientProps> = ({ session }) => {
     // Strictly gate tab navigation to authorized department roles only
     if (tab === 'accommodation' && !isDirector && role !== 'hospitality') return;
     if (tab === 'participants' && !isDirector && role !== 'registration') return;
+    if (tab === 'duplicates' && !isDirector && role !== 'registration') return;
     if (tab === 'schedule' && !isDirector && role !== 'events') return;
     if (tab === 'logistics' && !isDirector && role !== 'logistics') return;
     if (tab === 'disruptions' && !isDirector) return;
@@ -66,25 +68,29 @@ export const PortalClient: React.FC<PortalClientProps> = ({ session }) => {
               <RoleDashboardView currentRole={session.role} />
             )}
 
-              { currentTab === 'accommodation' && (isDirector || role === 'hospitality') && (
-                <AccommodationView />
-              )}
+            {currentTab === 'accommodation' && (isDirector || role === 'hospitality') && (
+              <AccommodationView />
+            )}
 
-              { currentTab === 'participants' && (isDirector || role === 'registration') && (
-                <ParticipantsView />
-              )}
+            {currentTab === 'participants' && (isDirector || role === 'registration') && (
+              <ParticipantsView />
+            )}
 
-              { currentTab === 'schedule' && (isDirector || role === 'events') && (
-                <ScheduleClashView />
-              )}
+            {currentTab === 'duplicates' && (isDirector || role === 'registration') && (
+              <FlaggedDuplicatesView />
+            )}
+
+            {currentTab === 'schedule' && (isDirector || role === 'events') && (
+              <ScheduleClashView />
+            )}
 
             {currentTab === 'logistics' && (isDirector || role === 'logistics') && (
               <LogisticsView />
             )}
 
-              { currentTab === 'disruptions' && isDirector && (
-                <DisruptionInjectorView />
-              )}
+            {currentTab === 'disruptions' && isDirector && (
+              <DisruptionInjectorView />
+            )}
           </div>
         </main>
       </div>

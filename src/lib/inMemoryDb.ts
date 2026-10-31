@@ -35,23 +35,10 @@ class InMemoryDatabase {
   }
 
   private seedInitialState() {
-    // 1. Initial simulated checked-in records (~1420 delegates checked in on Day 1)
-    const participants = CANONICAL_DATASET.participants || [];
-    const checkinCount = Math.min(1420, participants.length);
-    for (let i = 0; i < checkinCount; i++) {
-      const p = participants[i];
-      if (p && p.participant_id) {
-        this.checkIns.set(p.participant_id, {
-          participant_id: p.participant_id,
-          status: 'checked_in',
-          checked_in_at: new Date(Date.now() - (checkinCount - i) * 60000).toISOString(),
-          desk: `Desk ${(i % 4) + 1}`,
-          note: `WB-${10000 + i}`
-        });
-      }
-    }
+    // No fake or simulated check-ins. Real check-ins created on demand via check-in desk.
 
     // 2. Pre-generate duplicate candidates
+    const participants = CANONICAL_DATASET.participants;
     const seenNames = new Map<string, any>();
     let dupCounter = 1;
     for (const p of participants) {
@@ -316,7 +303,7 @@ class InMemoryDatabase {
     // 2. Checkins list / Wristbands
     if (norm.includes('from check_ins') || norm.includes('join check_ins')) {
       if (norm.includes('count(')) {
-        const count = this.checkIns.size || 1420;
+        const count = this.checkIns.size;
         return { rows: [{ cnt: count }], rowCount: 1 };
       }
 

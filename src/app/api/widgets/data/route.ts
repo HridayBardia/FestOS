@@ -585,7 +585,7 @@ export async function GET(req: NextRequest) {
       // ----------------------------------------------------
       case 'meal_headcount_forecast': {
         const checkinCountRes = await db.query(`SELECT COUNT(*) as cnt FROM check_ins WHERE status = 'checked_in';`);
-        const checkedIn = parseInt(checkinCountRes?.rows?.[0]?.cnt || '1420', 10) || 1420;
+        const checkedIn = parseInt(checkinCountRes?.rows?.[0]?.cnt || '0', 10) || 0;
         const totalCanonical = 2416;
 
         data = {
@@ -849,7 +849,7 @@ function getWidgetFallbackData(widgetId: string): any {
   switch (widgetId) {
     case 'checkin_counter':
       return {
-        telemetry: { total_canonical: 2416, checked_in_count: 1420, checkin_percentage: 59 },
+        telemetry: { total_canonical: 2416, checked_in_count: 0, checkin_percentage: 0 },
         contingents: [
           { contingent_id: 'C01', college: 'IIM Ahmedabad', total_delegates: 84, checked_in: 58 },
           { contingent_id: 'C02', college: 'IIM Bangalore', total_delegates: 76, checked_in: 52 },
@@ -1014,9 +1014,9 @@ function getWidgetFallbackData(widgetId: string): any {
 
     case 'meal_headcount_forecast':
       return {
-        breakfast: { forecasted: 2416, checkedInBase: 1420, bufferAllowance: 150 },
-        lunch: { forecasted: 2516, checkedInBase: 1420, bufferAllowance: 200 },
-        dinner: { forecasted: 2466, checkedInBase: 1420, bufferAllowance: 180 }
+        breakfast: { forecasted: 2416, checkedInBase: 0, bufferAllowance: 150 },
+        lunch: { forecasted: 2516, checkedInBase: 0, bufferAllowance: 200 },
+        dinner: { forecasted: 2466, checkedInBase: 0, bufferAllowance: 180 }
       };
 
     case 'dietary_breakdown':
@@ -1046,7 +1046,7 @@ function getWidgetFallbackData(widgetId: string): any {
     case 'master_kpi_bar':
       return {
         verifiedCanonical: 2416,
-        checkedIn: 1420,
+        checkedIn: 0,
         campusOccupancy: 86,
         externalPlacements: 180,
         hotelBudgetSpend: 24.5,

@@ -11,7 +11,8 @@ import {
   Flame,
   Shirt,
   UtensilsCrossed,
-  ClipboardList
+  ClipboardList,
+  ShieldAlert
 } from 'lucide-react';
 import { useFest } from '@/context/FestContext';
 import { RoleKey, PERMISSION_MATRIX, ROLES } from '@/config/roles';
@@ -52,6 +53,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       subtitle: `${participantsCount.toLocaleString()} delegates`,
       icon: Users,
       badge: null,
+      visible: isDirector || role === 'registration',
+    },
+    {
+      id: 'duplicates',
+      label: 'Flagged Intake Audit',
+      subtitle: '420 candidates under review',
+      icon: ShieldAlert,
+      badge: '420 Flagged',
+      badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300',
       visible: isDirector || role === 'registration',
     },
     {
@@ -134,15 +144,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               onClick={() => setCurrentTab(item.id)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-150 group text-left ${isActive
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-150 group text-left ${
+                isActive
                   ? 'bg-white text-[#1A1A1A] shadow-luxury border border-[#E5DFD3] font-semibold'
                   : 'text-[#6B655E] hover:text-[#1A1A1A] hover:bg-white/60 border border-transparent'
-                }`}
+              }`}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div
-                  className={`p-1.5 rounded-lg transition-colors ${isActive ? 'bg-[#F6EFE6] text-[#A3703F]' : 'text-[#8F8982] group-hover:text-[#1A1A1A]'
-                    }`}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    isActive ? 'bg-[#F6EFE6] text-[#A3703F]' : 'text-[#8F8982] group-hover:text-[#1A1A1A]'
+                  }`}
                 >
                   <Icon className="w-4 h-4" />
                 </div>
