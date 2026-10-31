@@ -167,6 +167,31 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const broadcastRef = React.useRef<BroadcastChannel | null>(null);
 
+  // Synchronize checked-in participants from persistent storage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('festos_aarohan_checked_in_ids');
+        if (stored) {
+          const ids = JSON.parse(stored);
+          if (Array.isArray(ids) && ids.length > 0) {
+            setCheckedInCount(ids.length);
+            setParticipants((prev) =>
+              prev.map((p) => {
+                const isChecked = ids.includes(p.id) || ids.includes((p as any).participant_id);
+                return isChecked
+                  ? { ...p, checked_in: true, checked_in_at: p.checked_in_at || new Date().toISOString() }
+                  : p;
+              })
+            );
+          }
+        }
+      } catch (e) {
+        // Storage access fallback
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       const bc = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
@@ -190,6 +215,16 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (payload.damageLogs) setDamageLogs(payload.damageLogs);
           if (payload.participantsCount !== undefined) setParticipantsCount(payload.participantsCount);
           if (payload.checkedInCount !== undefined) setCheckedInCount(payload.checkedInCount);
+          if (payload.participantCheckinUpdate) {
+            const upd = payload.participantCheckinUpdate;
+            setParticipants((prev) =>
+              prev.map((p) =>
+                p.id === upd.id || (p as any).participant_id === upd.id
+                  ? { ...p, checked_in: upd.checked_in, checked_in_at: upd.checked_in_at }
+                  : p
+              )
+            );
+          }
           if (payload.auditCount !== undefined) setAuditCount(payload.auditCount);
           setLastSyncTime(formatISTTimeWithSeconds(new Date().toISOString()));
         }
@@ -446,17 +481,23 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    const searchNorm = (search || '').toLowerCase().trim();
     const filtered = participants.filter((p) => {
       const cnt = contingents.find((c) => c.id === p.contingent_id);
-      const matchesSearch =
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.email.toLowerCase().includes(search.toLowerCase()) ||
-        p.phone.includes(search) ||
-        cnt?.name.toLowerCase().includes(search.toLowerCase());
+      const nameMatch = (p.name || '').toLowerCase().includes(searchNorm);
+      const emailMatch = (p.email || '').toLowerCase().includes(searchNorm);
+      const phoneMatch = (p.phone || (p as any).contact || '').includes(searchNorm);
+      const idMatch = (p.id || (p as any).participant_id || '').toLowerCase().includes(searchNorm);
+      const collegeMatch = (p.college || cnt?.name || '').toLowerCase().includes(searchNorm);
 
-      if (!matchesSearch) return false;
+      if (searchNorm && !nameMatch && !emailMatch && !phoneMatch && !idMatch && !collegeMatch) {
+        return false;
+      }
       if (contingentId !== 'all' && p.contingent_id !== contingentId) return false;
-      if (dietary !== 'all' && p.dietary_requirements !== dietary) return false;
+      if (dietary !== 'all') {
+        const dReq = (p.dietary_requirements || (p as any).dietary_needs || '').toLowerCase();
+        if (!dReq.includes(dietary.toLowerCase())) return false;
+      }
       if (accessibility && !p.accessibility_needs) return false;
       if (checkedIn === 'checked_in' && !p.checked_in) return false;
       if (checkedIn === 'pending' && p.checked_in) return false;
@@ -775,19 +816,40 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const toggleCheckIn = useCallback(async (participantId: string) => {
     let nextStatus = false;
     let nextTime: string | null = null;
+    let updatedCount = 0;
 
-    setParticipants((prev) =>
-      prev.map((p) => {
-        if (p.id === participantId) {
-          nextStatus = !p.checked_in;
-          nextTime = nextStatus ? new Date().toISOString() : null;
+    setParticipants((prev) => {
+      const target = prev.find((p) => p.id === participantId || (p as any).participant_id === participantId);
+      nextStatus = target ? !target.checked_in : true;
+      nextTime = nextStatus ? new Date().toISOString() : null;
+
+      const nextParticipants = prev.map((p) => {
+        if (p.id === participantId || (p as any).participant_id === participantId) {
           return { ...p, checked_in: nextStatus, checked_in_at: nextTime };
         }
         return p;
-      })
-    );
+      });
 
-    setCheckedInCount((prev) => (nextStatus ? prev + 1 : Math.max(0, prev - 1)));
+      // Persist checked-in roster to client storage
+      if (typeof window !== 'undefined') {
+        try {
+          const checkedIds = nextParticipants.filter((p) => p.checked_in).map((p) => p.id);
+          localStorage.setItem('festos_aarohan_checked_in_ids', JSON.stringify(checkedIds));
+        } catch (e) {}
+      }
+
+      return nextParticipants;
+    });
+
+    setCheckedInCount((prev) => {
+      updatedCount = nextStatus ? prev + 1 : Math.max(0, prev - 1);
+      // Synchronize in real time to all open dashboards via BroadcastChannel
+      broadcastStateUpdate({
+        checkedInCount: updatedCount,
+        participantCheckinUpdate: { id: participantId, checked_in: nextStatus, checked_in_at: nextTime }
+      });
+      return updatedCount;
+    });
 
     try {
       await fetch('/api/checkin', {
@@ -796,7 +858,7 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ participantId, desk: 'Directorate Desk' }),
       });
     } catch (e) {
-      // Local network fallback
+      // Local fallback
     }
 
     const supabase = getSupabaseClient();
@@ -810,7 +872,7 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Supabase toggle check in error:', e);
       }
     }
-  }, []);
+  }, [broadcastStateUpdate]);
 
   const updateEventVenue = useCallback(async (eventId: string, newVenueId: string, reason: string, approvedBy: string) => {
     const ev = events.find((e) => e.id === eventId);

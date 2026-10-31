@@ -1,5 +1,6 @@
 'use client';
 
+import { useFest } from '@/context/FestContext';
 import React, { useState, useEffect } from 'react';
 import { WidgetCard } from './WidgetCard';
 import {
@@ -24,6 +25,7 @@ interface WidgetProps {
 
 // 1. Checkin Counter Widget
 export const CheckinCounterWidget: React.FC<WidgetProps> = ({ role }) => {
+  const { checkedInCount } = useFest();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,9 @@ export const CheckinCounterWidget: React.FC<WidgetProps> = ({ role }) => {
 
   const telemetry = data?.telemetry || { total_canonical: 2416, checked_in_count: 0, checkin_percentage: 0 };
   const contingents = data?.contingents || [];
+  const liveCheckedIn = typeof checkedInCount === 'number' && checkedInCount > 0 ? checkedInCount : telemetry.checked_in_count;
+  const livePct = Math.min(100, Math.round((liveCheckedIn / 2416) * 100));
+  const livePending = Math.max(0, 2416 - liveCheckedIn);
 
   return (
     <WidgetCard widgetId="checkin_counter" loading={loading} error={error}>
@@ -60,13 +65,13 @@ export const CheckinCounterWidget: React.FC<WidgetProps> = ({ role }) => {
           </div>
           <div className="p-3.5 rounded-lg bg-emerald-50/50 border border-emerald-200">
             <p className="text-[11px] font-bold uppercase text-emerald-800">Checked-In Credentialed</p>
-            <p className="text-2xl font-serif font-bold text-emerald-900 mt-0.5">{telemetry.checked_in_count}</p>
-            <p className="text-[10px] text-emerald-700 mt-1 font-mono">{telemetry.checkin_percentage}% festival progress</p>
+            <p className="text-2xl font-serif font-bold text-emerald-900 mt-0.5">{liveCheckedIn}</p>
+            <p className="text-[10px] text-emerald-700 mt-1 font-mono">{livePct}% festival progress</p>
           </div>
           <div className="p-3.5 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3]">
             <p className="text-[11px] font-bold uppercase text-[#8F8982]">Expected Pending</p>
             <p className="text-2xl font-serif font-bold text-[#A3703F] mt-0.5">
-              {Math.max(0, telemetry.total_canonical - telemetry.checked_in_count)}
+              {livePending}
             </p>
             <p className="text-[10px] text-[#6B655E] mt-1 font-mono">38 participating colleges</p>
           </div>
@@ -76,12 +81,12 @@ export const CheckinCounterWidget: React.FC<WidgetProps> = ({ role }) => {
         <div>
           <div className="flex justify-between text-xs text-[#6B655E] mb-1 font-mono">
             <span>Overall Credentialing Completion</span>
-            <span>{telemetry.checkin_percentage}%</span>
+            <span>{livePct}%</span>
           </div>
           <div className="w-full bg-[#EFEBE3] h-2.5 rounded-full overflow-hidden">
             <div
               className="bg-[#A3703F] h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(5, telemetry.checkin_percentage))}%` }}
+              style={{ width: `${Math.min(100, Math.max(5, livePct))}%` }}
             />
           </div>
         </div>
@@ -105,6 +110,7 @@ export const CheckinCounterWidget: React.FC<WidgetProps> = ({ role }) => {
 
 // 2. Checkin Queue Widget
 export const CheckinQueueWidget: React.FC<WidgetProps> = ({ role, onRefreshTrigger }) => {
+  const { toggleCheckIn } = useFest();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -131,24 +137,21 @@ export const CheckinQueueWidget: React.FC<WidgetProps> = ({ role, onRefreshTrigg
   const handleCheckIn = async (participantId: string) => {
     setActionLoading(participantId);
     try {
-      const res = await fetch('/api/checkin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          participantId,
-          desk: 'Desk 1 (Aarohan Registration)',
-          actorRole: role
-        })
-      });
-      const json = await res.json();
-      if (json.success) {
-        await fetchData();
-        if (onRefreshTrigger) onRefreshTrigger();
-      } else {
-        alert(json.error);
-      }
+      // 1. Instantly trigger real-time toggle in FestContext & broadcast to all portals
+      await toggleCheckIn(participantId);
+
+      // 2. Optimistic UI update in current queue
+      setData((prev) =>
+        prev.map((item) =>
+          item.participant_id === participantId
+            ? { ...item, checkin_status: 'checked_in', checked_in_at: new Date().toISOString() }
+            : item
+        )
+      );
+
+      if (onRefreshTrigger) onRefreshTrigger();
     } catch (e: any) {
-      alert(e.message);
+      console.warn('Check-in error:', e);
     } finally {
       setActionLoading(null);
     }

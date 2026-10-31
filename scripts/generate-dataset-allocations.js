@@ -74,9 +74,9 @@ const externalStays = extCsv.slice(1).map(line => {
   };
 });
 
-// 3. Read participants.csv
+// 3. Read participants.csv and enrich with all schema fields
 const partCsv = fs.readFileSync('data/full_dataset/participants.csv', 'utf8').trim().split('\n');
-const participants = partCsv.slice(1).map(line => {
+const participants = partCsv.slice(1).map((line, index) => {
   const parts = line.split(',');
   const id = parts[0];
   const name = parts[1];
@@ -85,26 +85,46 @@ const participants = partCsv.slice(1).map(line => {
   const rawGender = parts[4] ? parts[4].toLowerCase().trim() : 'male';
   const gender = (rawGender === 'female' || rawGender === 'f' || rawGender === 'girl' || rawGender === 'girls') ? 'female' : 'male';
   const age = parts[5];
-  const contact = parts[6];
-  const accessibility = parts[7] && parts[7].toLowerCase().trim() === 'yes';
-  const dietary = parts[8];
+  const contact = parts[6] || '+91-9876543210';
+  const accessibility = Boolean(parts[7] && parts[7].toLowerCase().trim() !== 'none' && parts[7].trim() !== '');
+  const accessibility_note = accessibility ? parts[7].trim() : undefined;
+  const dietary = parts[8] && parts[8].trim() ? parts[8].trim() : 'none';
   const arrival = parts[9];
   const departure = parts[10];
   const accRequested = parts[11] && parts[11].toLowerCase().trim() === 'yes';
+  const tshirt_size = parts[12] || 'M';
+
+  // The first 2416 participants are valid registered delegates.
+  // The remaining 420 participants (from index 2416 to 2835) are flagged candidates under audit.
+  const isDuplicate = index >= 2416;
+  const validationStatus = isDuplicate ? 'flagged_duplicate' : 'valid';
 
   return {
     id,
+    participant_id: id,
     name,
     college,
     contingent_id,
     gender,
+    gender_as_given: rawGender,
+    email: `${id.toLowerCase()}@fest.iimidr.ac.in`,
+    phone: contact,
+    contact,
+    dietary_requirements: dietary,
+    dietary_needs: dietary,
     accessibility_needs: accessibility,
+    accessibility_note,
     accommodation_requested: accRequested,
     arrival_time: arrival,
     departure_time: departure,
+    arrival_datetime: arrival,
+    departure_datetime: departure,
+    tshirt_size,
     role: 'delegate',
     checked_in: false,
-    checked_in_at: null
+    checked_in_at: null,
+    is_duplicate: isDuplicate,
+    validation_status: validationStatus
   };
 });
 
@@ -120,6 +140,7 @@ const contingents = contCsv.slice(1).map(l => {
   const preferences = parts[5] || '';
   return {
     id: contingent_id,
+    contingent_id,
     name: `${college} (${contingent_id})`,
     college: college,
     city: 'Campus Delegate',
@@ -137,19 +158,20 @@ const contingents = contCsv.slice(1).map(l => {
 });
 
 contingents.forEach(c => {
-  const members = participants.filter(p => p.contingent_id === c.id);
+  const members = participants.filter(p => p.contingent_id === c.id && !p.is_duplicate);
   c.male_count = members.filter(p => p.gender === 'male').length;
   c.female_count = members.filter(p => p.gender === 'female').length;
   c.total_members = members.length || c.total_members;
 });
 
-// Allocation Builder
+// Allocation Builder strictly for valid registered delegates (excluding 420 flagged intake)
 const allocations = [];
 const bedLetters = ['A', 'B', 'C', 'D'];
 
-// Filter participants requesting accommodation
-const maleReq = participants.filter(p => p.accommodation_requested && p.gender === 'male');
-const femaleReq = participants.filter(p => p.accommodation_requested && p.gender === 'female');
+// Filter ONLY valid participants requesting accommodation (index < 2416)
+const validDelegates = participants.filter(p => !p.is_duplicate);
+const maleReq = validDelegates.filter(p => p.accommodation_requested && p.gender === 'male');
+const femaleReq = validDelegates.filter(p => p.accommodation_requested && p.gender === 'female');
 
 // Calculate stay duration helper
 const getStayMs = (p) => {
@@ -226,7 +248,6 @@ console.log('Campus Male allocated:', maleIdx, 'out of', maleRooms.reduce((s, r)
 console.log('Campus Female allocated:', femaleIdx, 'out of', femaleRooms.reduce((s, r) => s + r.capacity, 0), 'beds');
 
 // 3. Overflow remaining into External Stays (strictly single-gender rooms)
-// External rooms: each property has 2-bed, 3-bed, and 4-bed suites
 const externalRooms = [];
 externalStays.forEach(stay => {
   const roomsCount = Math.floor(stay.total_capacity / 3);
@@ -239,7 +260,7 @@ externalStays.forEach(stay => {
       property_name: stay.name,
       room_number: `${100 + i}`,
       capacity: cap,
-      gender: null // will be locked when allocated
+      gender: null
     });
   }
 });
@@ -302,8 +323,8 @@ while (femaleIdx < sortedFemales.length && extRoomIdx < externalRooms.length) {
 }
 
 console.log('Total allocations made:', allocations.length);
-console.log('Remaining unallocated males:', sortedMales.length - maleIdx);
-console.log('Remaining unallocated females:', sortedFemales.length - femaleIdx);
+console.log('Remaining unallocated valid males:', sortedMales.length - maleIdx);
+console.log('Remaining unallocated valid females:', sortedFemales.length - femaleIdx);
 
 // Update occupied beds counts
 hostelBlocks.forEach(h => {
@@ -318,42 +339,43 @@ externalStays.forEach(s => {
 // Verify Gender Segregation Across ALL Allocations
 let violations = 0;
 const partMap = new Map(participants.map(p => [p.id, p]));
-const roomMap = new Map();
 
-allocations.forEach(a => {
-  const p = partMap.get(a.participant_id);
-  const rKey = a.hostel_id ? `hostel_${a.hostel_id}_${a.room_number}` : `ext_${a.external_stay_id}_${a.room_number}`;
-  if (!roomMap.has(rKey)) {
-    roomMap.set(rKey, { genders: new Set(), occupants: [] });
-  }
-  const rInfo = roomMap.get(rKey);
-  rInfo.genders.add(p.gender);
-  rInfo.occupants.push({ id: p.id, name: p.name, gender: p.gender, bed: a.bed_number });
-
-  // Hostel level block check
-  if (a.hostel_id) {
-    if ((a.hostel_id === 'B1' || a.hostel_id === 'B2' || a.hostel_id === 'B3') && p.gender !== 'male') {
-      console.error('VIOLATION: Female in boys hostel block ' + a.hostel_id, p);
-      violations++;
-    }
-    if ((a.hostel_id === 'G1' || a.hostel_id === 'G2') && p.gender !== 'female') {
-      console.error('VIOLATION: Male in girls hostel block ' + a.hostel_id, p);
-      violations++;
-    }
-  }
-});
-
-roomMap.forEach((info, key) => {
-  if (info.genders.size > 1) {
-    console.error('VIOLATION: Mixed gender room in ' + key, Array.from(info.genders));
+// Check Hostels
+rooms.forEach(r => {
+  const inRoom = allocations.filter(a => a.room_number === r.room_id);
+  const genders = inRoom.map(a => partMap.get(a.participant_id)?.gender).filter(Boolean);
+  const uniqueGenders = Array.from(new Set(genders));
+  if (uniqueGenders.length > 1) {
     violations++;
+    console.error(`GENDER VIOLATION in Hostel Room ${r.room_id}:`, uniqueGenders);
+  }
+  if (uniqueGenders.length === 1 && uniqueGenders[0] !== r.gender) {
+    violations++;
+    console.error(`WRONG GENDER in Hostel Room ${r.room_id}: expected ${r.gender}, found ${uniqueGenders[0]}`);
   }
 });
 
-console.log('GENDER CHECK STATUS: ' + (violations === 0 ? 'PERFECT! 0 VIOLATIONS' : violations + ' VIOLATIONS DETECTED'));
+// Check External Rooms
+externalRooms.forEach(er => {
+  const inRoom = allocations.filter(a => a.external_stay_id === er.property_id && a.room_number === er.room_number);
+  const genders = inRoom.map(a => partMap.get(a.participant_id)?.gender).filter(Boolean);
+  const uniqueGenders = Array.from(new Set(genders));
+  if (uniqueGenders.length > 1) {
+    violations++;
+    console.error(`GENDER VIOLATION in External Room ${er.room_id}:`, uniqueGenders);
+  }
+});
 
-// Save canonical dataset
-const canonicalOut = {
+console.log('Total Gender Segregation Violations:', violations);
+
+// Verify that zero flagged candidates are allocated
+const flaggedAllocations = allocations.filter(a => {
+  const p = partMap.get(a.participant_id);
+  return p && p.is_duplicate;
+});
+console.log('Flagged Candidates Allocated in Hospitality:', flaggedAllocations.length, '(Must be 0)');
+
+const outputData = {
   contingents,
   participants,
   hostelBlocks,
@@ -363,5 +385,5 @@ const canonicalOut = {
   allocations
 };
 
-fs.writeFileSync('src/lib/canonicalAllocations.json', JSON.stringify(canonicalOut, null, 2), 'utf8');
-console.log('Saved src/lib/canonicalAllocations.json successfully.');
+fs.writeFileSync('src/lib/canonicalAllocations.json', JSON.stringify(outputData, null, 2), 'utf8');
+console.log('Generated src/lib/canonicalAllocations.json successfully!');

@@ -45,6 +45,9 @@ export interface Participant {
   checked_in: boolean;
   checked_in_at?: string | null;
   college?: string;
+  is_duplicate?: boolean;
+  validation_status?: string;
+  participant_id?: string;
 }
 
 export interface Hostel {

@@ -115,8 +115,15 @@ export const AccommodationView: React.FC = () => {
     return map;
   }, [contingents]);
 
-  // Lookup map for participants
-  const partMap = useMemo(() => new Map(participants.map((p) => [p.id, p])), [participants]);
+  // Only valid registered delegates (2,416); all 420 flagged candidates are isolated in Registration
+  const validParticipants = useMemo(() => {
+    return participants.filter(
+      (p) => !p.is_duplicate && (p as any).validation_status !== 'flagged_duplicate'
+    );
+  }, [participants]);
+
+  // Lookup map for valid participants
+  const partMap = useMemo(() => new Map(validParticipants.map((p) => [p.id, p])), [validParticipants]);
   const contingentMap = useMemo(() => new Map(contingents.map((c) => [c.id, c])), [contingents]);
 
   // Allocations index: key = `${hostelId}_${roomNumber}_${bedNumber}`
@@ -211,13 +218,13 @@ export const AccommodationView: React.FC = () => {
     return list;
   }, [hostelRooms, selectedBlockId, selectedFloor, selectedCapacity, selectedAccessibility, searchQuery, selectedOccupancy, sortBy, allocIndex, partMap]);
 
-  // Unallocated participants
+  // Unallocated participants (strictly valid registered delegates)
   const unallocatedParticipants = useMemo(() => {
     const allocatedParticipantIds = new Set(
       allocations.filter((a) => a.status !== 'vacated').map((a) => a.participant_id)
     );
-    return participants.filter((p) => !allocatedParticipantIds.has(p.id));
-  }, [participants, allocations]);
+    return validParticipants.filter((p) => !allocatedParticipantIds.has(p.id));
+  }, [validParticipants, allocations]);
 
   // Filtered unallocated queue
   const filteredUnallocated = useMemo(() => {
@@ -337,9 +344,9 @@ export const AccommodationView: React.FC = () => {
       {/* Cross-Verification Reconciliation Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="p-3.5 rounded-xl bg-white border border-[#E5DFD3] shadow-xs">
-          <p className="text-[10px] uppercase font-bold text-[#8F8982]">Total Delegates</p>
-          <p className="text-xl font-serif font-bold text-[#1A1A1A] mt-0.5">{participants.length}</p>
-          <p className="text-[10px] text-[#6B655E] font-mono mt-0.5">Dataset Pool</p>
+          <p className="text-[10px] uppercase font-bold text-[#8F8982]">Total Registered Delegates</p>
+          <p className="text-xl font-serif font-bold text-[#1A1A1A] mt-0.5">{validParticipants.length}</p>
+          <p className="text-[10px] text-[#6B655E] font-mono mt-0.5">2,416 Valid (420 Flagged Isolated)</p>
         </div>
 
         <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200 shadow-xs">
@@ -869,7 +876,7 @@ export const AccommodationView: React.FC = () => {
           hostels={hostels}
           externalStays={externalStays}
           allocations={allocations}
-          participants={participants}
+          participants={validParticipants}
           onConfirmReassign={handleConfirmReassign}
         />
       )}

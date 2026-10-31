@@ -127,7 +127,7 @@ export const ParticipantsView: React.FC = () => {
               Registration Directorate
             </span>
             <span className="text-xs text-[#8F8982] font-mono">
-              Live Supabase Pagination ({totalFilteredCount.toLocaleString()} Rows)
+              Live Festival Roster ({totalFilteredCount.toLocaleString()} Delegates)
             </span>
           </div>
           <h2 className="font-serif text-2xl font-bold text-[#1A1A1A]">Delegate & Contingent Roster</h2>
@@ -265,7 +265,7 @@ export const ParticipantsView: React.FC = () => {
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-[#8F8982]">
                     <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[#A3703F]" />
-                    <span>Querying Supabase database...</span>
+                    <span>Loading festival delegates roster...</span>
                   </td>
                 </tr>
               ) : paginatedData.length === 0 ? (
@@ -276,8 +276,9 @@ export const ParticipantsView: React.FC = () => {
                 </tr>
               ) : (
                 paginatedData.map((p) => {
+                  const pId = p.id || (p as any).participant_id;
                   const cnt = contingents.find((c) => c.id === p.contingent_id);
-                  const alloc = allocations.find((a) => a.participant_id === p.id && a.status !== 'vacated');
+                  const alloc = allocations.find((a) => a.participant_id === pId && a.status !== 'vacated');
                   let roomName = 'Unallocated';
                   let isOverride = alloc?.is_override;
 
@@ -296,7 +297,7 @@ export const ParticipantsView: React.FC = () => {
                   }
 
                   return (
-                    <tr key={p.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
+                    <tr key={pId} className="hover:bg-[#FAF8F5]/80 transition-colors">
                       {/* Name & Role */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2">
@@ -377,17 +378,20 @@ export const ParticipantsView: React.FC = () => {
                         <button
                           onClick={async () => {
                             setPaginatedData((prev) =>
-                              prev.map((item) =>
-                                item.id === p.id
-                                  ? {
-                                      ...item,
-                                      checked_in: !item.checked_in,
-                                      checked_in_at: !item.checked_in ? new Date().toISOString() : null,
-                                    }
-                                  : item
-                              )
+                              prev.map((item) => {
+                                const curId = item.id || (item as any).participant_id;
+                                if (curId === pId) {
+                                  const nextChecked = !item.checked_in;
+                                  return {
+                                    ...item,
+                                    checked_in: nextChecked,
+                                    checked_in_at: nextChecked ? new Date().toISOString() : null,
+                                  };
+                                }
+                                return item;
+                              })
                             );
-                            await toggleCheckIn(p.id);
+                            await toggleCheckIn(pId);
                           }}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 mx-auto active:scale-95 ${
                             p.checked_in

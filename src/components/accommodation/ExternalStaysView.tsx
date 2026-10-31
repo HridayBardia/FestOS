@@ -118,8 +118,15 @@ export const ExternalStaysView: React.FC = () => {
     return list;
   }, [externalStays, selectedPropertyFilter, distanceFilter, transportFilter, viewFilter, searchQuery, sortBy]);
 
+  // Only valid registered delegates (excluding 420 flagged intake)
+  const validParticipants = useMemo(() => {
+    return participants.filter(
+      (p) => !p.is_duplicate && (p as any).validation_status !== 'flagged_duplicate'
+    );
+  }, [participants]);
+
   // Map participant lookup
-  const partMap = useMemo(() => new Map(participants.map((p) => [p.id, p])), [participants]);
+  const partMap = useMemo(() => new Map(validParticipants.map((p) => [p.id, p])), [validParticipants]);
 
   // Group allocations by property and room
   const allocationsByProperty = useMemo(() => {
@@ -513,7 +520,7 @@ export const ExternalStaysView: React.FC = () => {
           hostels={hostels}
           externalStays={externalStays}
           allocations={allocations}
-          participants={participants}
+          participants={validParticipants}
           onConfirmReassign={handleConfirmReassign}
         />
       )}
