@@ -23,7 +23,7 @@ class InMemoryDatabase {
   }> = new Map();
 
   public allocationMap: Map<string, any> = new Map();
-  private auditLogs: any[] = [];
+  public auditLogs: any[] = [];
   private incidents: any[] = [];
   private approvals: any[] = [];
   private duplicateCandidates: any[] = [];

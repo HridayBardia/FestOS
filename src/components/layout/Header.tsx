@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Clock,
@@ -50,7 +50,8 @@ export const Header: React.FC<HeaderProps> = ({
     activeDisruptions,
     lastSyncTime,
     refreshData,
-    vendors
+    vendors,
+    auditCount
   } = useFest();
 
   const [currentTime, setCurrentTime] = useState<string>('11:32:00 AM');
@@ -58,6 +59,36 @@ export const Header: React.FC<HeaderProps> = ({
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState<boolean>(false);
+  const [liveAuditCount, setLiveAuditCount] = useState<number>(auditCount || 2);
+
+  const fetchLiveAuditCount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/audit-logs');
+      if (res.ok) {
+        const json = await res.json();
+        if (json && Array.isArray(json.logs)) {
+          setLiveAuditCount(json.logs.length);
+        }
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchLiveAuditCount();
+    const interval = setInterval(fetchLiveAuditCount, 3000);
+    const handleUpdate = () => fetchLiveAuditCount();
+    window.addEventListener('festos_audit_updated', handleUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('festos_audit_updated', handleUpdate);
+    };
+  }, [fetchLiveAuditCount]);
+
+  useEffect(() => {
+    if (auditCount && auditCount > liveAuditCount) {
+      setLiveAuditCount(auditCount);
+    }
+  }, [auditCount]);
 
   // User state
   const [userName, setUserName] = useState<string>(initialName || '');
@@ -271,14 +302,17 @@ export const Header: React.FC<HeaderProps> = ({
             <span suppressHydrationWarning>{hasMounted ? currentTime : '11:32:00 AM'} IST</span>
           </div>
 
-          {/* Direct Audit Log Trigger Button (Visible on xl+ screens) */}
+          {/* Direct Audit Log Trigger Button (Visible across all viewports) */}
           <button
             onClick={onOpenAuditLogs}
-            className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#F6EFE6] text-[#1A1A1A] text-xs font-medium border border-[#E5DFD3] transition-colors shadow-card whitespace-nowrap"
-            title="View Central Audit Trail"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white hover:bg-[#F6EFE6] text-[#1A1A1A] text-xs font-medium border border-[#E5DFD3] transition-colors shadow-card whitespace-nowrap"
+            title="View Central Audit Trail (Live Shared Across All 48 Members)"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-[#A3703F]" />
-            <span>Audit Trail</span>
+            <span className="hidden md:inline">Audit Trail</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-[#FAF0E4] text-[#A3703F] border border-[#EED5BC]">
+              {liveAuditCount}
+            </span>
           </button>
 
           {/* Direct Telemetry Refresh Button */}

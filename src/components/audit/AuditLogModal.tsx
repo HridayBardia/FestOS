@@ -35,6 +35,17 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
   useEffect(() => {
     if (isOpen) {
       fetchSharedLogs();
+      const interval = setInterval(fetchSharedLogs, 2500);
+
+      const handleAuditUpdated = () => {
+        fetchSharedLogs();
+      };
+      window.addEventListener('festos_audit_updated', handleAuditUpdated);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('festos_audit_updated', handleAuditUpdated);
+      };
     }
   }, [isOpen]);
 
@@ -44,15 +55,15 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
   const combinedLogs = [
     ...dbLogs.map((l) => ({
       id: l.id,
-      timestamp: l.timestamp || new Date().toISOString(),
-      actor: `${l.actor_id} (${l.actor_role})`,
-      action_type: l.action,
-      entity_id: l.entity_id,
-      entity_type: l.entity_type,
-      reason: l.reason,
-      previous_state: typeof l.before_state === 'string' ? l.before_state : JSON.stringify(l.before_state || 'Previous State'),
-      new_state: typeof l.after_state === 'string' ? l.after_state : JSON.stringify(l.after_state || 'Updated State'),
-      approved_by: l.actor_id,
+      timestamp: l.timestamp || l.created_at || new Date().toISOString(),
+      actor: l.actor || (l.actor_id ? `${l.actor_id} (${l.actor_role || 'staff'})` : 'System Core'),
+      action_type: l.action || l.action_type || 'OVERRIDE',
+      entity_id: l.entity_id || 'SYS',
+      entity_type: l.entity_type || 'general',
+      reason: l.reason || 'Operational action committed',
+      previous_state: typeof l.before_state === 'string' ? l.before_state : (typeof l.previous_state === 'string' ? l.previous_state : JSON.stringify(l.before_state || 'Previous State')),
+      new_state: typeof l.after_state === 'string' ? l.after_state : (typeof l.new_state === 'string' ? l.new_state : JSON.stringify(l.after_state || 'Updated State')),
+      approved_by: l.approved_by || l.actor_id || 'Directorate',
     })),
     ...auditLogs,
   ];

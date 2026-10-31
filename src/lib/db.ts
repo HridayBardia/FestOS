@@ -22,6 +22,26 @@ export async function logAudit(params: {
   }
 
   const auditId = `AUDIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const timestamp = new Date().toISOString();
+  const entry = {
+    id: auditId,
+    timestamp,
+    created_at: timestamp,
+    actor_id: params.actorId,
+    actor_role: params.actorRole,
+    action: params.action,
+    entity_type: params.entityType,
+    entity_id: params.entityId,
+    reason: trimmedReason,
+    before_state: params.beforeState ? (typeof params.beforeState === 'string' ? params.beforeState : JSON.stringify(params.beforeState)) : null,
+    after_state: params.afterState ? (typeof params.afterState === 'string' ? params.afterState : JSON.stringify(params.afterState)) : null
+  };
+
+  try {
+    const { inMemoryDb } = await import('@/lib/inMemoryDb');
+    inMemoryDb.auditLogs.unshift(entry);
+  } catch {}
+
   try {
     await db.query(
       `INSERT INTO audit_log (
@@ -35,12 +55,12 @@ export async function logAudit(params: {
         params.entityType,
         params.entityId,
         trimmedReason,
-        params.beforeState ? JSON.stringify(params.beforeState) : null,
-        params.afterState ? JSON.stringify(params.afterState) : null
+        entry.before_state,
+        entry.after_state
       ]
     );
   } catch (err) {
-    console.warn('[Audit Log Record In-Memory]:', params.action, params.entityId);
+    console.warn('[Audit Log Record In-Memory Sync]:', params.action, params.entityId);
   }
   return auditId;
 }

@@ -23,6 +23,9 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({ currentRol
   const triggerRefresh = () => {
     setIsRefreshing(true);
     setRefreshKey((k) => k + 1);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('festos_audit_updated'));
+    }
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
