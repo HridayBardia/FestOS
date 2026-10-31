@@ -16,7 +16,7 @@ import {
   StudentVolunteer,
   HostelRoom,
   EquipmentDamageLog
-} from '../types/database';
+} from '@/types/database';
 import canonicalJson from './canonicalAllocations.json';
 import logisticsJson from './logisticsCanonical.json';
 

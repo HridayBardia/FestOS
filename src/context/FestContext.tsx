@@ -21,7 +21,7 @@ import {
   StudentVolunteer,
   HostelRoom,
   EquipmentDamageLog
-} from '../types/database';
+} from '@/types/database';
 import {
   INITIAL_CONTINGENTS,
   INITIAL_HOSTELS,
