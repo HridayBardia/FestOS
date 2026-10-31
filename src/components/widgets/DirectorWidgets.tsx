@@ -272,7 +272,7 @@ export const CrossDepartmentAlertsWidget: React.FC<WidgetProps> = ({ role }) => 
     try {
       const res = await fetch(`/api/widgets/data?widgetId=cross_department_alerts&role=${role}`);
       const json = await res.json();
-      if (json.success) setData(json.data);
+      if (json.success && Array.isArray(json.data)) setData(json.data);
       else setError(json.error);
     } catch (e: any) {
       setError(e.message);
@@ -285,26 +285,31 @@ export const CrossDepartmentAlertsWidget: React.FC<WidgetProps> = ({ role }) => 
     fetchData();
   }, [role]);
 
+  const items = Array.isArray(data) ? data : [];
+
   return (
-    <WidgetCard widgetId="cross_department_alerts" loading={loading} error={error}>
-      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-        {data.slice(0, 10).map((alert) => (
-          <div key={alert.id} className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] text-xs">
+    <WidgetCard widgetId="cross_department_alerts" loading={loading} error={error} isEmpty={items.length === 0} emptyMessage="All cross-department feeds clear. Zero blocking alerts.">
+      <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+        {items.slice(0, 10).map((alert) => (
+          <div key={alert.id} className="p-3 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] text-xs space-y-1">
             <div className="flex justify-between items-center text-[10px] font-mono">
-              <span className="font-bold text-[#1A1A1A]">{alert.id}</span>
+              <span className="font-bold text-[#1A1A1A]">{alert.id} ({alert.department || (alert.file ? alert.file.replace('.csv', '') : 'Operations')})</span>
               <span
-                className={`px-1.5 py-0.2 rounded font-bold uppercase ${alert.severity === 'critical'
-                    ? 'bg-red-100 text-red-800'
+                className={`px-1.5 py-0.5 rounded font-bold uppercase ${
+                  alert.severity === 'critical'
+                    ? 'bg-red-100 text-red-800 border border-red-200'
                     : alert.severity === 'high'
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}
+                      ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                      : 'bg-blue-50 text-blue-800 border border-blue-200'
+                }`}
               >
                 {alert.severity}
               </span>
             </div>
-            <p className="font-serif font-bold text-[#1A1A1A] mt-1">{alert.description}</p>
-            <p className="text-[10px] text-[#6B655E] font-mono mt-0.5">Action: {alert.suggested_action}</p>
+            <p className="font-serif font-bold text-[#1A1A1A] text-sm mt-0.5">{alert.description || alert.message}</p>
+            {alert.suggested_action && (
+              <p className="text-[11px] text-[#A3703F] font-mono mt-1">Action: {alert.suggested_action}</p>
+            )}
           </div>
         ))}
       </div>

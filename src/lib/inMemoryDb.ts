@@ -5,6 +5,7 @@
 
 import { CANONICAL_DATASET } from './canonicalData';
 import { RoleKey, maskContact, maskName } from '@/config/roles';
+import canonicalAllocationsData from './canonicalAllocations.json';
 
 export interface InMemoryQueryResult {
   rows: any[];
@@ -13,7 +14,7 @@ export interface InMemoryQueryResult {
 
 // In-memory state collections
 class InMemoryDatabase {
-  private checkIns: Map<string, {
+  public checkIns: Map<string, {
     participant_id: string;
     status: 'checked_in' | 'pending';
     checked_in_at: string;
@@ -21,6 +22,7 @@ class InMemoryDatabase {
     note: string;
   }> = new Map();
 
+  public allocationMap: Map<string, any> = new Map();
   private auditLogs: any[] = [];
   private incidents: any[] = [];
   private approvals: any[] = [];
@@ -282,6 +284,15 @@ class InMemoryDatabase {
         created_at: new Date(Date.now() - 180 * 60000).toISOString()
       }
     ];
+
+    // 8. Map canonical bed allocations
+    if (canonicalAllocationsData && Array.isArray((canonicalAllocationsData as any).allocations)) {
+      for (const a of (canonicalAllocationsData as any).allocations) {
+        if (a && a.participant_id) {
+          this.allocationMap.set(a.participant_id, a);
+        }
+      }
+    }
   }
 
   // Execute in-memory query
@@ -697,22 +708,152 @@ class InMemoryDatabase {
       return { rows, rowCount: rows.length };
     }
 
-    // 16. Participants Query
+    // 16. Import Issues & Director Alerts
+    if (norm.includes('from import_issues')) {
+      const canonicalIssues = [
+        {
+          id: 'ISSUE-00001',
+          file: 'vendors.csv',
+          row_number: 5,
+          field: 'hygiene_certificate_expiry',
+          severity: 'critical',
+          issue_type: 'EXPIRED_COMPLIANCE',
+          department: 'food',
+          description: 'Vendor VND05 (Royal Rajputana Kitchen) certificate expired on 2026-09-29 prior to festival commencement.',
+          suggested_action: 'Lock vendor disbursement and require immediate public health re-certification before service.'
+        },
+        {
+          id: 'ISSUE-00002',
+          file: 'events.csv',
+          row_number: 4,
+          field: 'venue_time_slot',
+          severity: 'critical',
+          issue_type: 'VENUE_SCHEDULE_CLASH',
+          department: 'events',
+          description: 'Direct room clash in Auditorium (Main Hall) between Event E04 (Battle of Bands) and E09 (Symphony Orchestration).',
+          suggested_action: 'Reschedule E09 to Open Air Amphitheatre or shift time window to 16:30.'
+        },
+        {
+          id: 'ISSUE-00003',
+          file: 'registrations.csv',
+          row_number: 142,
+          field: 'participant_id',
+          severity: 'high',
+          issue_type: 'DUPLICATE_REGISTRATION',
+          department: 'registration',
+          description: 'Duplicate registration detected for canonical delegate P0142 under alias P0142-DUP across two colleges.',
+          suggested_action: 'Merge alias record into primary canonical profile and void duplicate RFID badge.'
+        },
+        {
+          id: 'ISSUE-00004',
+          file: 'participants.csv',
+          row_number: 89,
+          field: 'accessibility_needs',
+          severity: 'high',
+          issue_type: 'HARD_CONSTRAINT_VIOLATION',
+          department: 'hospitality',
+          description: 'Delegate P0089 requires motorized wheelchair accessibility; currently allocated to second floor of Block B.',
+          suggested_action: 'Execute ground-floor room override in Hostel Block A with zero-step ramp access.'
+        },
+        {
+          id: 'ISSUE-00005',
+          file: 'external_stays.csv',
+          row_number: 1,
+          field: 'capacity_overflow',
+          severity: 'medium',
+          issue_type: 'BUDGET_OVERRUN_ALERT',
+          department: 'hospitality',
+          description: 'Campus bed capacity ceiling (710 beds) exceeded; 740 delegates routed to external hotel properties.',
+          suggested_action: 'Monitor hotel disbursement balance (Rs. 27.01L allocated across EXT01-EXT06).'
+        },
+        {
+          id: 'ISSUE-00006',
+          file: 'inventory_logistics.csv',
+          row_number: 12,
+          field: 'item_shortage',
+          severity: 'medium',
+          issue_type: 'EQUIPMENT_DEFICIT',
+          department: 'logistics',
+          description: 'High-output wireless Shure SM58 microphone shortage at Lecture Theatre 1 during Debate finals.',
+          suggested_action: 'Dispatch 2 reserve units from Central AV Depot to LT-1 stage coordinator.'
+        },
+        {
+          id: 'ISSUE-00007',
+          file: 'contingents.csv',
+          row_number: 3,
+          field: 'cohesion_split',
+          severity: 'low',
+          issue_type: 'CONTINGENT_SPLIT',
+          department: 'hospitality',
+          description: 'Contingent C03 (IIM Shillong) split across two hostel wings due to single-floor capacity limits.',
+          suggested_action: 'Group leader Aditi Gupta notified; escort housed within 30m of wing junction.'
+        }
+      ];
+
+      if (norm.includes('count(*)')) {
+        const critOnly = norm.includes("severity = 'critical'");
+        const rows = critOnly ? canonicalIssues.filter(i => i.severity === 'critical') : canonicalIssues;
+        return { rows: [{ cnt: rows.length }], rowCount: 1 };
+      }
+
+      return { rows: canonicalIssues, rowCount: canonicalIssues.length };
+    }
+
+    // 17. Bed Allocations Query
+    if (norm.includes('from bed_allocations')) {
+      const rows = Array.from(this.allocationMap.values());
+      return { rows, rowCount: rows.length };
+    }
+
+    // 18. Participants Query
     if (norm.includes('from participants')) {
-      let filtered = [...CANONICAL_DATASET.participants];
+      let filtered = [...(CANONICAL_DATASET.participants || [])];
 
       // Handle search filter if present in params
       if (params && params.length > 0) {
         const searchPattern = params.find(p => typeof p === 'string' && p.startsWith('%') && p.endsWith('%'));
         if (searchPattern) {
-          const q = searchPattern.replace(/%/g, '').toLowerCase();
-          filtered = filtered.filter(p =>
-            (p.name && p.name.toLowerCase().includes(q)) ||
-            (p.participant_id && p.participant_id.toLowerCase().includes(q)) ||
-            (p.college && p.college.toLowerCase().includes(q)) ||
-            (p.contact && p.contact.toLowerCase().includes(q))
-          );
+          const q = searchPattern.replace(/%/g, '').toLowerCase().trim();
+          if (q) {
+            filtered = filtered.filter(p =>
+              (p.name && p.name.toLowerCase().includes(q)) ||
+              (p.participant_id && p.participant_id.toLowerCase().includes(q)) ||
+              (p.college && p.college.toLowerCase().includes(q)) ||
+              (p.contact && p.contact.toLowerCase().includes(q))
+            );
+          }
         }
+
+        // Handle contingent filter (e.g. 'C01', 'C02')
+        const contId = params.find(p => typeof p === 'string' && /^C\d+$/i.test(p));
+        if (contId && contId !== 'all') {
+          filtered = filtered.filter(p => (p.contingent_id || '').toUpperCase() === contId.toUpperCase());
+        }
+      }
+
+      // Handle accessibility constraint
+      if (norm.includes('accessibility_needs is not null')) {
+        filtered = filtered.filter(p => Boolean(p.accessibility_needs && p.accessibility_needs !== 'None' && p.accessibility_needs !== ''));
+      }
+
+      // Handle dietary constraint
+      if (norm.includes('p.dietary_needs ilike') || norm.includes('dietary_needs')) {
+        if (norm.includes('vegetarian') || norm.includes('veg')) {
+          filtered = filtered.filter(p => (p.dietary_needs || '').toLowerCase().includes('veg'));
+        } else if (norm.includes('jain')) {
+          filtered = filtered.filter(p => (p.dietary_needs || '').toLowerCase().includes('jain'));
+        } else if (norm.includes('vegan')) {
+          filtered = filtered.filter(p => (p.dietary_needs || '').toLowerCase().includes('vegan'));
+        } else if (norm.includes('halal')) {
+          filtered = filtered.filter(p => (p.dietary_needs || '').toLowerCase().includes('halal'));
+        }
+      }
+
+      // Handle check-in status
+      if (norm.includes("ci.status = 'checked_in'")) {
+        filtered = filtered.filter(p => this.checkIns.has(p.participant_id));
+      } else if (norm.includes("ci.status is null or ci.status != 'checked_in'")) {
+        filtered = filtered.filter(p => !this.checkIns.has(p.participant_id));
       }
 
       // Check count query
@@ -723,18 +864,29 @@ class InMemoryDatabase {
         };
       }
 
-      // Return paginated rows
-      const rows = filtered.slice(0, 50).map(p => {
+      // Extract limit and offset pagination
+      let limit = 20;
+      let offset = 0;
+      if (norm.includes('limit') && norm.includes('offset') && params && params.length >= 2) {
+        const maybeLimit = params[params.length - 2];
+        const maybeOffset = params[params.length - 1];
+        if (typeof maybeLimit === 'number') limit = maybeLimit;
+        if (typeof maybeOffset === 'number') offset = maybeOffset;
+      }
+
+      const rows = filtered.slice(offset, offset + limit).map(p => {
         const ci = this.checkIns.get(p.participant_id);
+        const alloc = this.allocationMap.get(p.participant_id);
         return {
           id: p.participant_id,
           participant_id: p.participant_id,
+          contingent_id: p.contingent_id,
           name: p.name,
           college: p.college,
-          contingent_id: p.contingent_id,
           contingent_name: p.college,
-          contact: p.contact,
           phone: p.contact,
+          contact: p.contact,
+          email: `${(p.participant_id || '').toLowerCase()}@fest.iimidr.ac.in`,
           gender: p.gender_as_given || 'Unspecified',
           dietary_requirements: p.dietary_needs || 'none',
           accessibility_needs: Boolean(p.accessibility_needs && p.accessibility_needs !== 'None'),
@@ -744,12 +896,16 @@ class InMemoryDatabase {
           departure_datetime: p.departure_datetime,
           accommodation_requested: p.accommodation_requested,
           validation_status: 'canonical_clean',
+          leader_name: 'Contingent Leader',
           role: 'delegate',
           checked_in: ci ? ci.status === 'checked_in' : false,
           checked_in_at: ci ? ci.checked_in_at : null,
           wristband_serial: ci ? ci.note : null,
           checkin_status: ci ? ci.status : 'pending',
-          desk: ci ? ci.desk : 'Desk 1'
+          desk: ci ? ci.desk : 'Desk 1',
+          assignment_type: alloc ? (alloc.hostel_id ? 'hostel' : 'external') : null,
+          room_id: alloc ? alloc.room_number : null,
+          property_id: alloc ? (alloc.external_stay_id || alloc.hostel_id) : null
         };
       });
 

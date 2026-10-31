@@ -184,6 +184,29 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.warn('Participants API DB query fallback to canonical in-memory dataset:', error?.message);
     const { searchParams } = new URL(req.url);
+
+    if (searchParams.get('type') === 'contingents') {
+      const list = (CANONICAL_DATASET.contingents || []).map((c: any) => {
+        const members = (CANONICAL_DATASET.participants || []).filter((p: any) => p.contingent_id === c.contingent_id);
+        const total = members.length || parseInt(c.strength_declared, 10) || 1;
+        const checkedInCount = members.filter((p: any) => inMemoryDb.checkIns.has(p.participant_id)).length;
+        return {
+          id: c.contingent_id,
+          contingent_id: c.contingent_id,
+          name: c.college,
+          college: c.college,
+          city: c.college ? c.college.split(' ')[0] : 'Indore',
+          leader_name: c.leader || 'Leader',
+          escort_name: c.escort || 'Faculty Escort',
+          strength_declared: parseInt(c.strength_declared, 10) || total,
+          total_members: total,
+          checked_in_count: checkedInCount,
+          preferences: c.preferences || 'no preference'
+        };
+      });
+      return NextResponse.json({ success: true, data: list });
+    }
+
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '20', 10)));
     const search = (searchParams.get('search') || '').toLowerCase().trim();
