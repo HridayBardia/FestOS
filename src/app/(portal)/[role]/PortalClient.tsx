@@ -15,6 +15,7 @@ import { ScheduleClashView } from '@/components/schedule/ScheduleClashView';
 import { LogisticsView } from '@/components/logistics/LogisticsView';
 import { DisruptionInjectorView } from '@/components/disruptions/DisruptionInjectorView';
 import { AuditLogModal } from '@/components/audit/AuditLogModal';
+import { OperationalAlertBanner } from '@/components/alerts/OperationalAlertBanner';
 import { SessionPayload } from '@/lib/jwt';
 
 interface PortalClientProps {
@@ -59,6 +60,12 @@ export const PortalClient: React.FC<PortalClientProps> = ({ session }) => {
           shift={session.shift}
           onOpenAuditLogs={() => setIsAuditModalOpen(true)}
           onOpenDisruptions={() => isDirector && setCurrentTab('disruptions')}
+        />
+
+        {/* Operational Incident Alert Command System across all 8 dashboards */}
+        <OperationalAlertBanner
+          currentMemberId={session.memberId}
+          currentRole={session.role}
         />
 
         {/* Viewport Content */}

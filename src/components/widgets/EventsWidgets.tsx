@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { RoleKey } from '@/config/roles';
 import { formatISTTime } from '@/lib/formatters';
+import { useFest } from '@/context/FestContext';
+import { UserMinus, UserCheck, RefreshCw, Sparkles, Plus, Phone, ExternalLink } from 'lucide-react';
 
 interface WidgetProps {
   role: RoleKey;
@@ -231,54 +233,154 @@ export const VenueStatusBoardWidget: React.FC<WidgetProps> = ({ role }) => {
   );
 };
 
-// 3. Clash Alert Feed Widget
+// 3. Clash Alert Feed Widget (Synchronized with Schedule & Clash Matrix)
 export const ClashAlertFeedWidget: React.FC<WidgetProps> = ({ role }) => {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { clashes, events, venues, updateEventVenue } = useFest();
+  const [filterType, setFilterType] = useState<string>('all');
+  const [resolvingClashId, setResolvingClashId] = useState<string | null>(null);
+  const [newVenueChoice, setNewVenueChoice] = useState<string>('ven-01');
 
-  const fetchData = async () => {
-    try {
-      const res = await fetch(`/api/widgets/data?widgetId=clash_alert_feed&role=${role}`);
-      const json = await res.json();
-      if (json.success) setData(json.data);
-      else setError(json.error);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+  const filteredClashes = clashes.filter((c) => {
+    if (filterType === 'all') return true;
+    if (filterType === 'venue') return c.type === 'venue_overlap';
+    if (filterType === 'participant') return c.type === 'participant_clash';
+    if (filterType === 'capacity') return c.type === 'capacity_exceeded';
+    return true;
+  });
+
+  const handleShiftVenue = (clash: any) => {
+    const targetEventId = clash.eventIds[clash.eventIds.length - 1];
+    updateEventVenue(
+      targetEventId,
+      newVenueChoice,
+      'Operational schedule conflict shift authorized from Events Desk',
+      'Kunal Chauhan (Events Lead)'
+    );
+    setResolvingClashId(null);
   };
-
-  useEffect(() => {
-    fetchData();
-  }, [role]);
-
-  const participantClashes = data?.participantClashes || [];
 
   return (
     <WidgetCard
       widgetId="clash_alert_feed"
-      loading={loading}
-      error={error}
-      isEmpty={participantClashes.length === 0}
-      emptyMessage="No active schedule collisions detected."
+      loading={false}
+      headerAction={
+        <div className="flex items-center gap-1.5 text-[11px]">
+          <span className="px-2 py-0.5 rounded-full font-mono font-bold bg-[#FAECEB] text-[#7C2D2A] border border-[#F0C9C7]">
+            {clashes.length} Active Conflicts
+          </span>
+        </div>
+      }
     >
-      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-        {participantClashes.slice(0, 8).map((c: any, i: number) => (
-          <div key={i} className="p-2.5 rounded-lg bg-amber-50/40 border border-amber-200 text-xs">
-            <div className="flex justify-between items-center">
-              <span className="font-serif font-bold text-amber-900">{c.participant_name}</span>
-              <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 rounded text-amber-800 border border-amber-300">
-                {c.participant_id}
-              </span>
+      <div className="space-y-3">
+        {/* Synchronized Clash Filter Ribbon */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          {[
+            { id: 'all', label: `All (${clashes.length})` },
+            { id: 'venue', label: 'Venue Overlaps' },
+            { id: 'participant', label: 'Participant Clashes' },
+            { id: 'capacity', label: 'Capacity Overruns' }
+          ].map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilterType(f.id)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all shrink-0 ${
+                filterType === f.id
+                  ? 'bg-[#7C2D2A] text-white shadow-xs font-semibold'
+                  : 'bg-[#FAF8F5] text-[#6B655E] border border-[#E5DFD3] hover:bg-white'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Clashes List */}
+        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+          {filteredClashes.length === 0 ? (
+            <div className="p-6 text-center text-xs text-[#8F8982] bg-[#FAF8F5] rounded-xl border border-dashed border-[#E5DFD3]">
+              No active clashes under this category.
             </div>
-            <p className="text-[11px] text-[#6B655E] mt-0.5">{c.college}</p>
-            <div className="mt-1 text-[10px] font-mono text-amber-800 bg-white p-1 rounded border border-amber-200">
-              Overlap: {c.event1_name} ({c.event1}) & {c.event2_name} ({c.event2})
-            </div>
-          </div>
-        ))}
+          ) : (
+            filteredClashes.map((c) => {
+              const involvedEvents = events.filter((e) => c.eventIds.includes(e.id));
+              const isResolving = resolvingClashId === c.id;
+
+              return (
+                <div
+                  key={c.id}
+                  className="p-3 rounded-xl bg-white border border-[#F0C9C7] text-xs space-y-2 shadow-xs hover:border-[#7C2D2A]/50 transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#FAECEB] text-[#7C2D2A] border border-[#F0C9C7]">
+                      {c.type.replace('_', ' ')}
+                    </span>
+                    <span className="text-[10px] font-mono text-[#7C2D2A] font-bold">
+                      SEVERITY: {c.severity.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h5 className="font-serif font-bold text-[#1A1A1A]">{c.title}</h5>
+                    <p className="text-[11px] text-[#6B655E] mt-0.5 leading-relaxed">{c.description}</p>
+                  </div>
+
+                  <div className="space-y-1 pt-1 border-t border-[#F5F2EC]">
+                    {involvedEvents.map((ev) => (
+                      <div
+                        key={ev.id}
+                        className="flex items-center justify-between px-2 py-1 rounded bg-[#FAF8F5] text-[10px] font-mono"
+                      >
+                        <span className="font-bold text-[#1A1A1A]">{ev.title} ({ev.id})</span>
+                        <span className="text-[#A3703F]">
+                          {formatISTTime(ev.start_time)} - {formatISTTime(ev.end_time)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Mitigation Actions */}
+                  <div className="pt-2 border-t border-[#F5F2EC] flex items-center justify-between">
+                    {isResolving ? (
+                      <div className="flex items-center gap-1.5 w-full">
+                        <select
+                          value={newVenueChoice}
+                          onChange={(e) => setNewVenueChoice(e.target.value)}
+                          className="px-2 py-1 rounded border border-[#E5DFD3] text-[10px] bg-white text-[#1A1A1A] flex-1"
+                        >
+                          {venues.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              Shift to: {v.name} ({v.capacity} pax)
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleShiftVenue(c)}
+                          className="px-2.5 py-1 rounded bg-[#7C2D2A] text-white font-bold text-[10px]"
+                        >
+                          Apply Shift
+                        </button>
+                        <button
+                          onClick={() => setResolvingClashId(null)}
+                          className="text-[10px] text-[#8F8982] hover:text-[#1A1A1A]"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setResolvingClashId(c.id)}
+                        className="px-2.5 py-1 rounded bg-[#FAECEB] hover:bg-[#F0C9C7] text-[#7C2D2A] text-[10px] font-bold border border-[#F0C9C7] flex items-center gap-1 transition-all ml-auto"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        <span>Shift Venue / Mitigate</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </WidgetCard>
   );
@@ -436,49 +538,348 @@ export const EventDelayToolWidget: React.FC<WidgetProps> = ({ role, onRefreshTri
   );
 };
 
-// 6. Volunteer Deployment Widget
+// 6. Volunteer Deployment Widget (Student Volunteers Roster & Assignment Control)
 export const VolunteerDeploymentWidget: React.FC<WidgetProps> = ({ role }) => {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    studentVolunteers,
+    dismissVolunteer,
+    reallocateVolunteer,
+    assignVolunteer,
+    events,
+    venues
+  } = useFest();
 
-  const fetchData = async () => {
-    try {
-      const res = await fetch(`/api/widgets/data?widgetId=volunteer_deployment&role=${role}`);
-      const json = await res.json();
-      if (json.success) setData(json.data);
-      else setError(json.error);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+  const [selectedEventFilter, setSelectedEventFilter] = useState<string>('all');
+  const [reallocatingVolId, setReallocatingVolId] = useState<string | null>(null);
+  const [targetEventChoice, setTargetEventChoice] = useState<string>('E01');
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState<boolean>(false);
+  const [assignEventTarget, setAssignEventTarget] = useState<string>('E01');
+  const [selectedStandbyVolId, setSelectedStandbyVolId] = useState<string>('');
+
+  const deployedVolunteers = studentVolunteers.filter((v) => v.status === 'deployed');
+  const standbyVolunteers = studentVolunteers.filter((v) => v.status === 'standby');
+
+  // Group deployed volunteers by assigned event
+  const eventIdsWithVolunteers = Array.from(
+    new Set(deployedVolunteers.map((v) => v.assignedEventId).filter(Boolean))
+  ) as string[];
+
+  // Include core flagship/cultural events in the view
+  const primaryEventIds = ['E01', 'E03', 'E04', 'E05', 'E06', 'E09'];
+  const allDisplayEventIds = Array.from(new Set([...primaryEventIds, ...eventIdsWithVolunteers]));
+
+  const filteredEventIds = allDisplayEventIds.filter((eId) => {
+    if (selectedEventFilter === 'all') return true;
+    return eId === selectedEventFilter;
+  });
+
+  const handleExecuteReallocate = (volId: string) => {
+    reallocateVolunteer(volId, targetEventChoice);
+    setReallocatingVolId(null);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [role]);
+  const handleExecuteAssignFromStandby = () => {
+    if (!selectedStandbyVolId || !assignEventTarget) return;
+    assignVolunteer(selectedStandbyVolId, assignEventTarget);
+    setSelectedStandbyVolId('');
+    setIsAssignModalOpen(false);
+  };
 
   return (
-    <WidgetCard widgetId="volunteer_deployment" loading={loading} error={error}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs max-h-[300px] overflow-y-auto pr-1">
-        {data.map((t) => (
-          <div key={t.task_id} className="p-2.5 rounded-lg bg-white border border-[#E5DFD3] flex flex-col justify-between">
-            <div>
-              <div className="flex justify-between items-center text-[10px] text-[#8F8982] font-mono">
-                <span>{t.event_id}</span>
-                <span className="text-[#A3703F] font-bold">Volunteers: {t.volunteers_needed}</span>
-              </div>
-              <p className="font-serif font-bold text-[#1A1A1A] mt-0.5">{t.event_name}</p>
-              <p className="text-[11px] text-[#6B655E] mt-0.5">{t.venue_name}</p>
+    <WidgetCard
+      widgetId="volunteer_deployment"
+      loading={false}
+      headerAction={
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsAssignModalOpen(true)}
+            className="px-2.5 py-1 rounded bg-[#A3703F] hover:bg-[#8C6D36] text-white text-[11px] font-bold flex items-center gap-1 shadow-xs transition-all"
+          >
+            <Plus className="w-3 h-3" />
+            <span>Deploy Standby Volunteer</span>
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-3 text-xs">
+        {/* Volunteer Enlistment & Operational Status Bar */}
+        <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E5DFD3] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-serif font-bold text-[#1A1A1A] text-sm">
+                Student Volunteers Operations Roster
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#EAF3EC] text-[#2D5A3E] border border-[#C7E2CE]">
+                Voluntary Student Enlistment
+              </span>
             </div>
-            <div className="mt-2 pt-1 border-t border-[#EFEBE3] text-[10px] font-mono text-[#8F8982]">
-              Assigned Lead: {t.lead_name} ({t.assignee_id})
+            <p className="text-[11px] text-[#6B655E] mt-0.5">
+              Normal students serving voluntarily across Aarohan 2026 competitions.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0 text-xs font-mono">
+            <span className="text-[#2D5A3E] bg-[#EAF3EC] px-2 py-1 rounded border border-[#C7E2CE] font-bold">
+              {deployedVolunteers.length} Deployed
+            </span>
+            <span className="text-[#7A4E1D] bg-[#FAF0E4] px-2 py-1 rounded border border-[#EED5BC] font-bold">
+              {standbyVolunteers.length} Standby
+            </span>
+          </div>
+        </div>
+
+        {/* Filter Ribbon */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          <span className="text-[#8F8982] font-semibold text-[10px] uppercase mr-1">Event:</span>
+          <button
+            onClick={() => setSelectedEventFilter('all')}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all shrink-0 ${
+              selectedEventFilter === 'all'
+                ? 'bg-[#A3703F] text-white font-bold'
+                : 'bg-[#FAF8F5] text-[#6B655E] border border-[#E5DFD3] hover:bg-white'
+            }`}
+          >
+            All Events ({allDisplayEventIds.length})
+          </button>
+          {allDisplayEventIds.map((eId) => {
+            const ev = events.find((e) => e.id === eId);
+            return (
+              <button
+                key={eId}
+                onClick={() => setSelectedEventFilter(eId)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all shrink-0 ${
+                  selectedEventFilter === eId
+                    ? 'bg-[#A3703F] text-white font-bold'
+                    : 'bg-[#FAF8F5] text-[#6B655E] border border-[#E5DFD3] hover:bg-white'
+                }`}
+              >
+                {ev?.title || eId}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Event Volunteer Deployment Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+          {filteredEventIds.map((eId) => {
+            const ev = events.find((e) => e.id === eId);
+            const venue = venues.find((v) => v.id === ev?.venue_id);
+            const assigned = studentVolunteers.filter((v) => v.assignedEventId === eId && v.status === 'deployed');
+            const needed = 2;
+
+            return (
+              <div
+                key={eId}
+                className="p-3.5 rounded-xl bg-white border border-[#E5DFD3] shadow-xs space-y-2.5 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between text-xs pb-1.5 border-b border-[#F4F1EA]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-[#A3703F] bg-[#F6EFE6] px-1.5 py-0.5 rounded border border-[#E5DFD3]">
+                        {eId}
+                      </span>
+                      <h4 className="font-serif font-bold text-[#1A1A1A]">{ev?.title || eId}</h4>
+                    </div>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+                      assigned.length >= needed
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                    }`}>
+                      {assigned.length}/{needed} Volunteers
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-[#6B655E] mt-1">
+                    Location: <strong>{venue?.name || 'Assigned Venue'}</strong> ({venue?.type})
+                  </p>
+
+                  {/* Assigned Student Volunteers List */}
+                  <div className="mt-2 space-y-1.5">
+                    {assigned.length === 0 ? (
+                      <div className="p-3 rounded-lg bg-[#FAF8F5] border border-dashed border-[#E5DFD3] text-center text-[11px] text-[#8F8982]">
+                        No student volunteers currently deployed to this event.
+                      </div>
+                    ) : (
+                      assigned.map((vol) => {
+                        const isReallocating = reallocatingVolId === vol.id;
+
+                        return (
+                          <div
+                            key={vol.id}
+                            className="p-2 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs"
+                          >
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-[#1A1A1A]">{vol.name}</span>
+                                <span className="text-[9px] font-mono text-[#8F8982]">({vol.rollNo})</span>
+                                <span className="text-[9px] bg-emerald-100 text-emerald-900 px-1 py-0.2 rounded font-bold">
+                                  Voluntary
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-[#6B655E]">
+                                Role: <span className="font-medium text-[#A3703F]">{vol.assignedRole}</span> · {vol.shift}
+                              </p>
+                            </div>
+
+                            {/* Actions: Dismiss & Reallocate */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              {isReallocating ? (
+                                <div className="flex items-center gap-1">
+                                  <select
+                                    value={targetEventChoice}
+                                    onChange={(e) => setTargetEventChoice(e.target.value)}
+                                    className="text-[10px] px-1.5 py-0.5 rounded border border-[#E5DFD3] bg-white text-[#1A1A1A]"
+                                  >
+                                    {events.map((e) => (
+                                      <option key={e.id} value={e.id}>
+                                        {e.title} ({e.id})
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => handleExecuteReallocate(vol.id)}
+                                    className="px-2 py-0.5 rounded bg-[#A3703F] text-white font-bold text-[10px]"
+                                  >
+                                    Move
+                                  </button>
+                                  <button
+                                    onClick={() => setReallocatingVolId(null)}
+                                    className="text-[10px] text-[#8F8982] hover:text-[#1A1A1A]"
+                                  >
+                                    X
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setTargetEventChoice(eId === 'E01' ? 'E03' : 'E01');
+                                      setReallocatingVolId(vol.id);
+                                    }}
+                                    className="px-2 py-1 rounded bg-white hover:bg-[#FAF8F5] text-[#A3703F] border border-[#E5DFD3] text-[10px] font-bold shadow-2xs"
+                                    title="Move volunteer to another event"
+                                  >
+                                    Reallocate
+                                  </button>
+                                  <button
+                                    onClick={() => dismissVolunteer(vol.id)}
+                                    className="px-2 py-1 rounded bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold shadow-2xs"
+                                    title="Relieve volunteer from this event to standby pool"
+                                  >
+                                    Dismiss
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Quick Assign */}
+                <div className="pt-2 border-t border-[#F5F2EC] flex items-center justify-between text-[11px]">
+                  <span className="text-[#8F8982]">Need more support?</span>
+                  <button
+                    onClick={() => {
+                      setAssignEventTarget(eId);
+                      setIsAssignModalOpen(true);
+                    }}
+                    className="text-[#A3703F] hover:text-[#8C6D36] font-bold flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Assign from Standby</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Deploy from Standby Pool Modal */}
+        {isAssignModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-2xs">
+            <div className="bg-white border border-[#E5DFD3] rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-[#E5DFD3] pb-3">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-[#A3703F]" />
+                  <h4 className="font-serif font-bold text-base text-[#1A1A1A]">
+                    Deploy Volunteer to Event
+                  </h4>
+                </div>
+                <button
+                  onClick={() => setIsAssignModalOpen(false)}
+                  className="text-[#8F8982] hover:text-[#1A1A1A]"
+                >
+                  X
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-[#8F8982] mb-1">
+                    Target Event
+                  </label>
+                  <select
+                    value={assignEventTarget}
+                    onChange={(e) => setAssignEventTarget(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-[#E5DFD3] bg-[#FAF8F5] text-xs font-semibold text-[#1A1A1A]"
+                  >
+                    {events.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.title} ({e.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-[#8F8982] mb-1">
+                    Select Available Student from Standby Pool ({standbyVolunteers.length})
+                  </label>
+                  {standbyVolunteers.length === 0 ? (
+                    <div className="p-3 text-center text-xs text-[#8F8982] bg-[#FAF8F5] rounded-lg">
+                      No volunteers currently on standby. All students are deployed.
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedStandbyVolId}
+                      onChange={(e) => setSelectedStandbyVolId(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-lg border border-[#E5DFD3] bg-[#FAF8F5] text-xs text-[#1A1A1A]"
+                    >
+                      <option value="">Select student volunteer...</option>
+                      {standbyVolunteers.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name} ({v.rollNo}) · {v.college}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[#F5F2EC]">
+                <button
+                  type="button"
+                  onClick={() => setIsAssignModalOpen(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs text-[#6B655E] hover:text-[#1A1A1A]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!selectedStandbyVolId}
+                  onClick={handleExecuteAssignFromStandby}
+                  className="px-4 py-1.5 rounded-lg bg-[#A3703F] hover:bg-[#8C6D36] text-white font-bold text-xs shadow-xs disabled:opacity-50"
+                >
+                  Confirm Deployment
+                </button>
+              </div>
             </div>
           </div>
-        ))}
+        )}
       </div>
     </WidgetCard>
   );
 };
-

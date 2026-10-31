@@ -16,7 +16,9 @@ import {
   CoreTeamMember,
   OverrideAuditLog,
   ClashAlert,
-  ActionType
+  ActionType,
+  OperationalAlert,
+  StudentVolunteer
 } from '../types/database';
 import {
   INITIAL_CONTINGENTS,
@@ -31,7 +33,9 @@ import {
   INITIAL_LOGISTICS,
   INITIAL_MERCH,
   INITIAL_CORE_TEAM,
-  INITIAL_AUDIT_LOGS
+  INITIAL_AUDIT_LOGS,
+  INITIAL_OPERATIONAL_ALERTS,
+  INITIAL_STUDENT_VOLUNTEERS
 } from '../lib/mockData';
 import { getSupabaseClient, isSupabaseConfigured, saveCredentials, getStoredCredentials } from '../lib/supabase';
 import { formatISTTimeWithSeconds } from '../lib/formatters';
@@ -51,6 +55,16 @@ interface FestContextType {
   coreTeam: CoreTeamMember[];
   auditLogs: OverrideAuditLog[];
   clashes: ClashAlert[];
+
+  operationalAlerts: OperationalAlert[];
+  broadcastOperationalAlert: (alert: Omit<OperationalAlert, 'id' | 'alertCode' | 'timestamp' | 'status' | 'acknowledgedBy'>) => void;
+  acknowledgeOperationalAlert: (alertId: string, memberId: string) => void;
+  resolveOperationalAlert: (alertId: string, note?: string) => void;
+
+  studentVolunteers: StudentVolunteer[];
+  dismissVolunteer: (volunteerId: string, reason?: string) => void;
+  reallocateVolunteer: (volunteerId: string, targetEventId: string, targetRole?: string) => void;
+  assignVolunteer: (volunteerId: string, eventId: string, role?: string) => void;
 
   participantsCount: number;
   checkedInCount: number;
@@ -123,6 +137,8 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [coreTeam, setCoreTeam] = useState<CoreTeamMember[]>(INITIAL_CORE_TEAM);
   const [auditLogs, setAuditLogs] = useState<OverrideAuditLog[]>(INITIAL_AUDIT_LOGS);
   const [activeDisruptions, setActiveDisruptions] = useState<string[]>([]);
+  const [operationalAlerts, setOperationalAlerts] = useState<OperationalAlert[]>(INITIAL_OPERATIONAL_ALERTS);
+  const [studentVolunteers, setStudentVolunteers] = useState<StudentVolunteer[]>(INITIAL_STUDENT_VOLUNTEERS);
 
   const [participantsCount, setParticipantsCount] = useState<number>(2836);
   const [checkedInCount, setCheckedInCount] = useState<number>(0);
@@ -155,6 +171,8 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (payload.vendors) setVendors(payload.vendors);
           if (payload.auditLogs) setAuditLogs(payload.auditLogs);
           if (payload.activeDisruptions) setActiveDisruptions(payload.activeDisruptions);
+          if (payload.operationalAlerts) setOperationalAlerts(payload.operationalAlerts);
+          if (payload.studentVolunteers) setStudentVolunteers(payload.studentVolunteers);
           if (payload.participantsCount !== undefined) setParticipantsCount(payload.participantsCount);
           if (payload.checkedInCount !== undefined) setCheckedInCount(payload.checkedInCount);
           if (payload.auditCount !== undefined) setAuditCount(payload.auditCount);
@@ -1217,6 +1235,103 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { allocatedCount, violationsCount };
   }, [allocations, participants, hostels, externalStays, contingents, broadcastStateUpdate]);
 
+
+  const broadcastOperationalAlert = useCallback((newAlertData: Omit<OperationalAlert, 'id' | 'alertCode' | 'timestamp' | 'status' | 'acknowledgedBy'>) => {
+    const alertId = 'alert-' + Date.now();
+    const alertCode = 'ALERT-EVT-' + Math.floor(10 + Math.random() * 90);
+    const fullAlert: OperationalAlert = {
+      ...newAlertData,
+      id: alertId,
+      alertCode,
+      timestamp: new Date().toISOString(),
+      status: 'active',
+      acknowledgedBy: []
+    };
+    setOperationalAlerts((prev) => {
+      const next = [fullAlert, ...prev];
+      broadcastStateUpdate({ operationalAlerts: next });
+      return next;
+    });
+  }, [broadcastStateUpdate]);
+
+  const acknowledgeOperationalAlert = useCallback((alertId: string, memberId: string) => {
+    setOperationalAlerts((prev) => {
+      const next = prev.map((a) => {
+        if (a.id === alertId) {
+          const acked = a.acknowledgedBy.includes(memberId) ? a.acknowledgedBy : [...a.acknowledgedBy, memberId];
+          return { ...a, acknowledgedBy: acked, status: a.status === 'active' ? 'investigating' : a.status };
+        }
+        return a;
+      });
+      broadcastStateUpdate({ operationalAlerts: next });
+      return next;
+    });
+  }, [broadcastStateUpdate]);
+
+  const resolveOperationalAlert = useCallback((alertId: string, note?: string) => {
+    setOperationalAlerts((prev) => {
+      const next = prev.map((a) => {
+        if (a.id === alertId) {
+          return {
+            ...a,
+            status: 'resolved' as const,
+            resolvedAt: new Date().toISOString(),
+            resolutionNote: note || 'Resolved by operational dispatch'
+          };
+        }
+        return a;
+      });
+      broadcastStateUpdate({ operationalAlerts: next });
+      return next;
+    });
+  }, [broadcastStateUpdate]);
+
+  const dismissVolunteer = useCallback((volunteerId: string, reason?: string) => {
+    setStudentVolunteers((prev) => {
+      const next = prev.map((v) => {
+        if (v.id === volunteerId) {
+          return {
+            ...v,
+            assignedEventId: null,
+            assignedEventName: undefined,
+            assignedVenue: undefined,
+            status: 'standby' as const,
+            assignedRole: 'General Standby Reserve'
+          };
+        }
+        return v;
+      });
+      broadcastStateUpdate({ studentVolunteers: next });
+      return next;
+    });
+  }, [broadcastStateUpdate]);
+
+  const reallocateVolunteer = useCallback((volunteerId: string, targetEventId: string, targetRole?: string) => {
+    setStudentVolunteers((prev) => {
+      const targetEvent = events.find((e) => e.id === targetEventId);
+      const targetVenue = targetEvent ? venues.find((vn) => vn.id === targetEvent.venue_id) : undefined;
+      const next = prev.map((v) => {
+        if (v.id === volunteerId) {
+          return {
+            ...v,
+            assignedEventId: targetEventId,
+            assignedEventName: targetEvent?.title || targetEventId,
+            assignedVenue: targetVenue?.name || 'Assigned Venue',
+            assignedRole: targetRole || v.assignedRole,
+            status: 'deployed' as const
+          };
+        }
+        return v;
+      });
+      broadcastStateUpdate({ studentVolunteers: next });
+      return next;
+    });
+  }, [events, venues, broadcastStateUpdate]);
+
+  const assignVolunteer = useCallback((volunteerId: string, eventId: string, role?: string) => {
+    reallocateVolunteer(volunteerId, eventId, role);
+  }, [reallocateVolunteer]);
+
   return (
     <FestContext.Provider
       value={{
@@ -1234,6 +1349,14 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
         coreTeam,
         auditLogs,
         clashes,
+        operationalAlerts,
+        broadcastOperationalAlert,
+        acknowledgeOperationalAlert,
+        resolveOperationalAlert,
+        studentVolunteers,
+        dismissVolunteer,
+        reallocateVolunteer,
+        assignVolunteer,
         participantsCount,
         checkedInCount,
         auditCount,

@@ -192,3 +192,38 @@ export interface ClashAlert {
   participantId?: string;
 }
 
+export interface OperationalAlert {
+  id: string;
+  alertCode: string;
+  severity: 'critical' | 'high' | 'medium' | 'info';
+  eventId?: string;
+  eventName?: string;
+  venueId?: string;
+  venueName?: string;
+  title: string;
+  problemDescription: string;
+  operationalImpact: string;
+  requiredAction: string;
+  reportedBy: string;
+  reportedRole: string;
+  timestamp: string;
+  status: 'active' | 'investigating' | 'resolved';
+  acknowledgedBy: string[];
+  resolvedAt?: string;
+  resolutionNote?: string;
+}
+
+export interface StudentVolunteer {
+  id: string;
+  name: string;
+  rollNo: string;
+  college: string;
+  phone: string;
+  assignedEventId: string | null;
+  assignedEventName?: string;
+  assignedVenue?: string;
+  assignedRole: string;
+  voluntaryStatus: 'Voluntary Sign-up';
+  shift: string;
+  status: 'deployed' | 'standby' | 'dismissed';
+}
