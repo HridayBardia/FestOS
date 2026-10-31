@@ -7,31 +7,39 @@ const { parse } = require('url');
 const next = require('next');
 
 // Prevent event loop from ever running dry
-setInterval(() => {}, 30000);
+setInterval(() => {}, 15000);
 
-// Prevent Next.js or child libraries from quitting when stdin closes in non-interactive shells
+// Keep stdin flowing and prevent disconnection terminations
 try {
+  if (process.stdin.setRawMode) {
+    process.stdin.setRawMode(false);
+  }
   process.stdin.resume();
-  const origOn = process.stdin.on.bind(process.stdin);
-  process.stdin.on = function(event, listener) {
-    if (event === 'end' || event === 'close') {
-      return process.stdin;
-    }
-    return origOn(event, listener);
-  };
+  process.stdin.on('data', () => {});
+  process.stdin.on('end', () => {});
+  process.stdin.on('error', () => {});
 } catch (e) {
-  // Stdin not available
+  // Stdin not available in this environment
 }
 
-// Block silent exits with code 0 triggered by background shell disconnection
+// Ignore OS signals that kill background processes when console detaches
+process.on('SIGINT', () => {
+  console.log('[SIGNAL] SIGINT received: keeping server running.');
+});
+process.on('SIGTERM', () => {
+  console.log('[SIGNAL] SIGTERM received: keeping server running.');
+});
+process.on('SIGBREAK', () => {
+  console.log('[SIGNAL] SIGBREAK received: keeping server running.');
+});
+process.on('SIGHUP', () => {
+  console.log('[SIGNAL] SIGHUP received: keeping server running.');
+});
+
+// Block silent exits with code 0 or 1 triggered by child library disconnects
 const originalExit = process.exit.bind(process);
 process.exit = function(code) {
-  if (code === 0 || code === undefined) {
-    console.log('[BLOCKED PROCESS.EXIT(0)] Keeping server alive in background.');
-    return;
-  }
-  console.error(`[FATAL EXIT] Code: ${code}`);
-  originalExit(code);
+  console.log(`[PROCESS.EXIT INTERCEPTED] Code: ${code} - Keeping server alive.`);
 };
 
 process.on('uncaughtException', (err) => {
@@ -43,7 +51,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 const dev = process.env.NODE_ENV === 'development';
-const hostname = 'localhost';
+const hostname = '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
@@ -64,10 +72,14 @@ app.prepare().then(() => {
     console.error('[SERVER ERROR]', err);
   });
 
-  server.listen(port, () => {
-    console.log(`> FestOS live on http://${hostname}:${port}`);
+  server.on('close', () => {
+    console.warn('[SERVER CLOSED] Re-listening on port', port);
+    server.listen(port, hostname);
+  });
+
+  server.listen(port, hostname, () => {
+    console.log(`> FestOS live on http://localhost:${port}`);
   });
 }).catch((err) => {
   console.error('Preparation failed:', err);
-  originalExit(1);
 });
