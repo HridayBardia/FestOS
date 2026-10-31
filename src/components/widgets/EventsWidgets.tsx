@@ -12,7 +12,8 @@ import {
   ArrowRight,
   ShieldAlert,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Search
 } from 'lucide-react';
 import { RoleKey } from '@/config/roles';
 import { formatISTTime } from '@/lib/formatters';
@@ -27,6 +28,8 @@ export const ScheduleTimelineWidget: React.FC<WidgetProps> = ({ role }) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [selectedDay, setSelectedDay] = useState<string>('all');
 
   const fetchData = async () => {
     try {
@@ -45,34 +48,136 @@ export const ScheduleTimelineWidget: React.FC<WidgetProps> = ({ role }) => {
     fetchData();
   }, [role]);
 
+  const formatSlotTime = (startIso?: string, endIso?: string) => {
+    if (!startIso) return 'N/A';
+    try {
+      const d = new Date(startIso);
+      const dateStr = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' });
+      const startTimeStr = formatISTTime(startIso);
+      const endTimeStr = endIso ? formatISTTime(endIso) : '';
+      return `${dateStr} · ${startTimeStr}${endTimeStr ? ' - ' + endTimeStr : ''}`;
+    } catch {
+      return startIso?.replace('T', ' ').slice(5, 16) || 'N/A';
+    }
+  };
+
+  const filteredData = data.filter((s) => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      !q ||
+      (s.event_id && s.event_id.toLowerCase().includes(q)) ||
+      (s.event_name && s.event_name.toLowerCase().includes(q)) ||
+      (s.venue_name && s.venue_name.toLowerCase().includes(q));
+
+    if (!matchesSearch) return false;
+
+    if (selectedDay === 'all') return true;
+    if (selectedDay === 'day1') return s.start_time?.includes('2026-10-30');
+    if (selectedDay === 'day2') return s.start_time?.includes('2026-10-31');
+    if (selectedDay === 'day3') return s.start_time?.includes('2026-11-01');
+    return true;
+  });
+
   return (
-    <WidgetCard widgetId="schedule_timeline" loading={loading} error={error}>
-      <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
-        {data.slice(0, 15).map((s) => (
-          <div key={s.id} className="p-3 rounded-lg bg-white border border-[#E5DFD3] text-xs flex justify-between items-center">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[#A3703F] font-bold">{s.event_id}</span>
-                <span className="font-serif font-bold text-[#1A1A1A]">{s.event_name}</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#FAF8F5] text-[#8F8982] border border-[#E5DFD3]">
-                  {s.event_type}
-                </span>
-              </div>
-              <p className="text-[11px] text-[#6B655E] mt-0.5 flex items-center gap-1.5">
-                <MapPin className="w-3 h-3 text-[#8F8982]" /> {s.venue_name}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] font-mono text-[#1A1A1A] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#E5DFD3] flex items-center gap-1">
-                <Clock className="w-3 h-3 text-[#8F8982]" />
-                {s.start_time?.replace('T', ' ').slice(5, 16)}
-              </span>
-              <p className="text-[10px] font-mono text-emerald-700 mt-1 uppercase font-bold">
-                {s.status}
-              </p>
-            </div>
+    <WidgetCard
+      widgetId="schedule_timeline"
+      loading={loading}
+      error={error}
+      headerAction={
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search event, venue..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="text-xs px-2.5 py-1 pl-7 rounded-md border border-[#E5DFD3] bg-[#FAF8F5] text-[#1A1A1A] focus:outline-none focus:border-[#A3703F] w-36 sm:w-44"
+            />
+            <Search className="w-3.5 h-3.5 text-[#8F8982] absolute left-2 top-1.5" />
           </div>
-        ))}
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        {/* Day Filter Navigation Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          {[
+            { id: 'all', label: `All Events (${data.length})` },
+            { id: 'day1', label: 'Day 1 (Oct 30)' },
+            { id: 'day2', label: 'Day 2 (Oct 31)' },
+            { id: 'day3', label: 'Day 3 (Nov 1)' }
+          ].map((d) => (
+            <button
+              key={d.id}
+              onClick={() => setSelectedDay(d.id)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all shrink-0 ${
+                selectedDay === d.id
+                  ? 'bg-[#A3703F] text-white shadow-xs font-semibold'
+                  : 'bg-[#FAF8F5] text-[#6B655E] border border-[#E5DFD3] hover:bg-white'
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Chronological Event Cards */}
+        <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+          {filteredData.length === 0 ? (
+            <div className="p-6 text-center text-xs text-[#8F8982] bg-[#FAF8F5] rounded-xl border border-dashed border-[#E5DFD3]">
+              No events found matching filter criteria.
+            </div>
+          ) : (
+            filteredData.map((s) => (
+              <div
+                key={s.id}
+                className="p-3.5 rounded-xl bg-white border border-[#E5DFD3] text-xs hover:border-[#A3703F]/50 transition-all shadow-xs space-y-2"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-[#A3703F] font-bold text-xs bg-[#F6EFE6] px-2 py-0.5 rounded border border-[#E5DFD3]">
+                      {s.event_id}
+                    </span>
+                    <span className="font-serif font-bold text-[#1A1A1A] text-sm">{s.event_name}</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#FAF8F5] text-[#8F8982] border border-[#E5DFD3] uppercase font-mono">
+                      {s.event_type}
+                    </span>
+                    {s.duration_minutes && (
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 font-mono font-bold">
+                        {s.duration_minutes}m duration
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] font-mono text-[#1A1A1A] bg-[#FAF8F5] px-2.5 py-1 rounded border border-[#E5DFD3] flex items-center gap-1.5 font-semibold">
+                      <Clock className="w-3.5 h-3.5 text-[#A3703F]" />
+                      {formatSlotTime(s.start_time, s.end_time)}
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 uppercase font-bold">
+                      {s.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Venue, Spec and Logistics Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-[#F5F2EC] text-[11px] text-[#6B655E]">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#A3703F] shrink-0" />
+                    <span className="font-semibold text-[#1A1A1A]">{s.venue_name}</span>
+                  </div>
+                  <div className="truncate">
+                    <span className="text-[#8F8982]">Venue Setup: </span>
+                    <span className="font-medium text-[#1A1A1A]">{s.venue_requirements || 'Standard Stage'}</span>
+                  </div>
+                  <div className="truncate">
+                    <span className="text-[#8F8982]">Logistics Equip: </span>
+                    <span className="font-medium text-[#A3703F]">{s.equipment_needs || 'Standard AV'}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </WidgetCard>
   );

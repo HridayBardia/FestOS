@@ -42,7 +42,7 @@ process.on('unhandledRejection', (reason) => {
   console.error('[UNHANDLED REJECTION]', reason);
 });
 
-const dev = process.env.NODE_ENV !== 'production';
+const dev = process.env.NODE_ENV === 'development';
 const hostname = 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
 const app = next({ dev, hostname, port });
