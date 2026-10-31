@@ -463,8 +463,7 @@ export async function GET(req: NextRequest) {
         const invRes = await db.query(`
           SELECT item_id, item, quantity, location, condition
           FROM inventory_logistics
-          ORDER BY quantity DESC
-          LIMIT 30;
+          ORDER BY item_id ASC;
         `);
         data = invRes.rows;
         break;

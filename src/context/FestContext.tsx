@@ -19,7 +19,8 @@ import {
   ActionType,
   OperationalAlert,
   StudentVolunteer,
-  HostelRoom
+  HostelRoom,
+  EquipmentDamageLog
 } from '../types/database';
 import {
   INITIAL_CONTINGENTS,
@@ -38,7 +39,8 @@ import {
   INITIAL_CORE_TEAM,
   INITIAL_AUDIT_LOGS,
   INITIAL_OPERATIONAL_ALERTS,
-  INITIAL_STUDENT_VOLUNTEERS
+  INITIAL_STUDENT_VOLUNTEERS,
+  INITIAL_DAMAGE_LOGS
 } from '../lib/mockData';
 import { getSupabaseClient, isSupabaseConfigured, saveCredentials, getStoredCredentials } from '../lib/supabase';
 import { formatISTTimeWithSeconds } from '../lib/formatters';
@@ -70,6 +72,10 @@ interface FestContextType {
   dismissVolunteer: (volunteerId: string, reason?: string) => void;
   reallocateVolunteer: (volunteerId: string, targetEventId: string, targetRole?: string) => void;
   assignVolunteer: (volunteerId: string, eventId: string, role?: string) => void;
+
+  damageLogs: EquipmentDamageLog[];
+  logEquipmentDamage: (data: Omit<EquipmentDamageLog, 'id' | 'timestamp' | 'repairStatus'>) => void;
+  resolveEquipmentDamage: (damageLogId: string, resolutionNotes: string) => void;
 
   participantsCount: number;
   checkedInCount: number;
@@ -146,6 +152,7 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeDisruptions, setActiveDisruptions] = useState<string[]>([]);
   const [operationalAlerts, setOperationalAlerts] = useState<OperationalAlert[]>(INITIAL_OPERATIONAL_ALERTS);
   const [studentVolunteers, setStudentVolunteers] = useState<StudentVolunteer[]>(INITIAL_STUDENT_VOLUNTEERS);
+  const [damageLogs, setDamageLogs] = useState<EquipmentDamageLog[]>(INITIAL_DAMAGE_LOGS);
 
   const [participantsCount, setParticipantsCount] = useState<number>(2836);
   const [checkedInCount, setCheckedInCount] = useState<number>(0);
@@ -180,6 +187,7 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (payload.activeDisruptions) setActiveDisruptions(payload.activeDisruptions);
           if (payload.operationalAlerts) setOperationalAlerts(payload.operationalAlerts);
           if (payload.studentVolunteers) setStudentVolunteers(payload.studentVolunteers);
+          if (payload.damageLogs) setDamageLogs(payload.damageLogs);
           if (payload.participantsCount !== undefined) setParticipantsCount(payload.participantsCount);
           if (payload.checkedInCount !== undefined) setCheckedInCount(payload.checkedInCount);
           if (payload.auditCount !== undefined) setAuditCount(payload.auditCount);
@@ -1333,6 +1341,87 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
     reallocateVolunteer(volunteerId, eventId, role);
   }, [reallocateVolunteer]);
 
+
+  const logEquipmentDamage = useCallback((data: Omit<EquipmentDamageLog, 'id' | 'timestamp' | 'repairStatus'>) => {
+    const id = 'DMG-' + Date.now();
+    const alertCode = 'ALERT-EQ-' + Math.floor(100 + Math.random() * 900);
+    const newLog: EquipmentDamageLog = {
+      ...data,
+      id,
+      timestamp: new Date().toISOString(),
+      alertCode,
+      repairStatus: 'under_repair'
+    };
+
+    setDamageLogs((prev) => [newLog, ...prev]);
+
+    // Update item condition in logistics inventory
+    setLogistics((prev) =>
+      prev.map((item) =>
+        item.id === data.itemId || item.item_id === data.itemId
+          ? {
+              ...item,
+              condition: data.reportedCondition || 'under repair',
+              available_quantity: Math.max(0, item.available_quantity - data.quantityAffected)
+            }
+          : item
+      )
+    );
+
+    // Connect to Alert System: Broadcast Operational Alert across all 8 dashboards
+    broadcastOperationalAlert({
+      title: `Equipment Defect: ${data.itemName} (${data.itemId})`,
+      severity: data.severity,
+      problemDescription: `${data.defectDescription} affected ${data.quantityAffected} unit(s) at ${data.depotLocation}.`,
+      operationalImpact: `Defect flags item condition as '${data.reportedCondition}'. Operational gear pool reduced.`,
+      requiredAction: `Logistics repair runner dispatched to ${data.depotLocation}. Fast-track assessment or substitute backup stock.`,
+      reportedBy: data.loggedBy,
+      reportedRole: data.loggedRole,
+      venueName: data.depotLocation
+    });
+
+    broadcastStateUpdate({
+      damageLogs: [newLog, ...damageLogs]
+    });
+  }, [damageLogs, broadcastOperationalAlert, broadcastStateUpdate]);
+
+  const resolveEquipmentDamage = useCallback((damageLogId: string, resolutionNotes: string) => {
+    setDamageLogs((prev) =>
+      prev.map((log) => {
+        if (log.id === damageLogId) {
+          return {
+            ...log,
+            repairStatus: 'repaired',
+            resolvedAt: new Date().toISOString(),
+            resolutionNotes
+          };
+        }
+        return log;
+      })
+    );
+
+    const targetLog = damageLogs.find((l) => l.id === damageLogId);
+    if (targetLog) {
+      setLogistics((prev) =>
+        prev.map((item) =>
+          item.id === targetLog.itemId || item.item_id === targetLog.itemId
+            ? {
+                ...item,
+                condition: 'good',
+                available_quantity: item.available_quantity + targetLog.quantityAffected
+              }
+            : item
+        )
+      );
+
+      if (targetLog.alertCode) {
+        const matchingAlert = operationalAlerts.find((a) => a.alertCode === targetLog.alertCode);
+        if (matchingAlert) {
+          resolveOperationalAlert(matchingAlert.id, `Equipment repaired and recommissioned: ${resolutionNotes}`);
+        }
+      }
+    }
+  }, [damageLogs, operationalAlerts, resolveOperationalAlert]);
   return (
     <FestContext.Provider
       value={{
@@ -1357,6 +1446,9 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
         acknowledgeOperationalAlert,
         resolveOperationalAlert,
         studentVolunteers,
+        damageLogs,
+        logEquipmentDamage,
+        resolveEquipmentDamage,
         dismissVolunteer,
         reallocateVolunteer,
         assignVolunteer,

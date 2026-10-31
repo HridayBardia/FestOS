@@ -14,9 +14,11 @@ import {
   OverrideAuditLog,
   OperationalAlert,
   StudentVolunteer,
-  HostelRoom
+  HostelRoom,
+  EquipmentDamageLog
 } from '../types/database';
 import canonicalJson from './canonicalAllocations.json';
+import logisticsJson from './logisticsCanonical.json';
 
 export const INITIAL_CONTINGENTS: Contingent[] = canonicalJson.contingents as unknown as Contingent[];
 
@@ -189,58 +191,9 @@ export const INITIAL_VENDORS: Vendor[] = [
   }
 ];
 
-export const INITIAL_LOGISTICS: InventoryLogistics[] = [
-  {
-    id: 'log-01',
-    item_name: 'JBL VRX Line Array Speakers',
-    category: 'av_equipment',
-    total_quantity: 24,
-    in_use_quantity: 16,
-    available_quantity: 8,
-    location: 'Central Audio Depot',
-    condition: 'optimal'
-  },
-  {
-    id: 'log-02',
-    item_name: '500 kVA Mobile DG Genset (Silent)',
-    category: 'power_generators',
-    total_quantity: 4,
-    in_use_quantity: 3,
-    available_quantity: 1,
-    location: 'Substation Perimeter',
-    condition: 'optimal'
-  },
-  {
-    id: 'log-03',
-    item_name: 'Heavy Duty Mojo Crowd Barricades (m)',
-    category: 'barricades',
-    total_quantity: 250,
-    in_use_quantity: 180,
-    available_quantity: 70,
-    location: 'Amphitheatre Buffer Zone',
-    condition: 'optimal'
-  },
-  {
-    id: 'log-04',
-    item_name: 'VIP Banquet Chairs (Velvet Padded)',
-    category: 'furniture',
-    total_quantity: 600,
-    in_use_quantity: 450,
-    available_quantity: 150,
-    location: 'Main Stage AV Depot',
-    condition: 'optimal'
-  },
-  {
-    id: 'log-05',
-    item_name: 'Waterproof Octanorm German Hangar Canopy',
-    category: 'canopy',
-    total_quantity: 8,
-    in_use_quantity: 6,
-    available_quantity: 2,
-    location: 'Sports Ground Pavilion',
-    condition: 'needs_repair'
-  }
-];
+export const INITIAL_LOGISTICS: InventoryLogistics[] = logisticsJson.logistics as unknown as InventoryLogistics[];
+
+export const INITIAL_DAMAGE_LOGS: EquipmentDamageLog[] = logisticsJson.damageLogs as unknown as EquipmentDamageLog[];
 
 export const INITIAL_MERCH: InventoryMerch[] = [
   {

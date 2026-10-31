@@ -507,7 +507,7 @@ class InMemoryDatabase {
       if (norm.includes('where quantity <= 5')) {
         return { rows: rows.filter(r => r.quantity <= 15).slice(0, 10), rowCount: 10 };
       }
-      return { rows: rows.slice(0, 50), rowCount: rows.length };
+      return { rows: rows, rowCount: rows.length };
     }
 
     // 10. Merchandise Inventory & v_merch_stock
