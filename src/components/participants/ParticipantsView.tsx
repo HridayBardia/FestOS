@@ -424,7 +424,7 @@ export const ParticipantsView: React.FC = () => {
         {/* Server Pagination Bar */}
         <div className="p-4 border-t border-[#E5DFD3] bg-[#FAF8F5] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#6B655E]">
           <span className="font-mono">
-            Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalFilteredCount)} of{' '}
+            Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, totalFilteredCount)} of{' '}
             {totalFilteredCount.toLocaleString()} delegates
           </span>
 

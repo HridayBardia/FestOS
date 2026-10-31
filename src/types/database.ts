@@ -44,6 +44,7 @@ export interface Participant {
   role: 'leader' | 'delegate' | 'performer' | 'sports';
   checked_in: boolean;
   checked_in_at?: string | null;
+  college?: string;
 }
 
 export interface Hostel {
@@ -69,6 +70,21 @@ export interface ExternalStay {
   contact_person: string;
   contact_phone: string;
   status: 'standby' | 'active' | 'full';
+  distance_km?: number;
+  transport_availability?: string;
+  feasibility_note?: string;
+  caution_note?: string;
+  has_good_view?: boolean;
+}
+
+export interface HostelRoom {
+  room_id: string;
+  block: string;
+  floor: number;
+  gender: 'male' | 'female';
+  capacity: number;
+  accessibility: boolean;
+  status: string;
 }
 
 export interface AccommodationAllocation {

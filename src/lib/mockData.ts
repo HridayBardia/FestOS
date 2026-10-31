@@ -13,110 +13,20 @@ import {
   CoreTeamMember,
   OverrideAuditLog,
   OperationalAlert,
-  StudentVolunteer
+  StudentVolunteer,
+  HostelRoom
 } from '../types/database';
 import canonicalJson from './canonicalAllocations.json';
 
 export const INITIAL_CONTINGENTS: Contingent[] = canonicalJson.contingents as unknown as Contingent[];
 
-export const INITIAL_HOSTELS: Hostel[] = [
-  {
-    id: 'hostel-01',
-    name: 'IPM Residence 1',
-    code: 'IPM-H1',
-    gender_allowed: 'female',
-    total_capacity: 120,
-    occupied_beds: 74,
-    status: 'operational',
-    floor_count: 3,
-    has_elevator: true,
-    notes: 'Ground floor priority for accessibility needs. Ramp access available.'
-  },
-  {
-    id: 'hostel-02',
-    name: 'IPM Residence 2',
-    code: 'IPM-H2',
-    gender_allowed: 'male',
-    total_capacity: 150,
-    occupied_beds: 96,
-    status: 'operational',
-    floor_count: 4,
-    has_elevator: true,
-    notes: 'Wing B renovated recently. 24/7 solar hot water.'
-  },
-  {
-    id: 'hostel-03',
-    name: 'PGP Block Alpha',
-    code: 'PGP-BA',
-    gender_allowed: 'male',
-    total_capacity: 180,
-    occupied_beds: 122,
-    status: 'operational',
-    floor_count: 3,
-    has_elevator: false,
-    notes: 'Standard double occupancy rooms.'
-  },
-  {
-    id: 'hostel-04',
-    name: 'PGP Block Beta',
-    code: 'PGP-BB',
-    gender_allowed: 'female',
-    total_capacity: 140,
-    occupied_beds: 68,
-    status: 'operational',
-    floor_count: 3,
-    has_elevator: false,
-    notes: 'Quiet study zone on 3rd floor.'
-  },
-  {
-    id: 'hostel-05',
-    name: 'MDP Executive Residence',
-    code: 'MDP-RES',
-    gender_allowed: 'all',
-    total_capacity: 60,
-    occupied_beds: 42,
-    status: 'operational',
-    floor_count: 2,
-    has_elevator: true,
-    notes: 'Premium air-conditioned suites reserved for VIPs, judges, and accessibility overflow.'
-  }
-];
+export const INITIAL_HOSTELS: Hostel[] = canonicalJson.hostelBlocks as unknown as Hostel[];
 
-export const INITIAL_EXTERNAL_STAYS: ExternalStay[] = [
-  {
-    id: 'ext-01',
-    name: 'Crescent Spa & Resort (Overflow Stay 1)',
-    location: 'Rau Bypass Road, Indore (5 km from Campus)',
-    total_capacity: 100,
-    occupied_beds: 18,
-    cost_per_night: 2200,
-    contact_person: 'Vikram Joshi (GM)',
-    contact_phone: '+91 94250 88990',
-    status: 'active'
-  },
-  {
-    id: 'ext-02',
-    name: 'Radisson Blu Indore (VIP / Judges Overflow)',
-    location: 'MR 10 Road, Vijay Nagar, Indore',
-    total_capacity: 40,
-    occupied_beds: 12,
-    cost_per_night: 4800,
-    contact_person: 'Sunita Rao',
-    contact_phone: '+91 97551 23411',
-    status: 'active'
-  },
-  {
-    id: 'ext-03',
-    name: 'Papaya Tree Hotel (Contingent Overflow)',
-    location: 'A.B. Road, Rau Circle, Indore',
-    total_capacity: 80,
-    occupied_beds: 0,
-    cost_per_night: 1800,
-    contact_person: 'Harish Patel',
-    contact_phone: '+91 98260 77123',
-    status: 'standby'
-  }
-];
+export const INITIAL_HOSTEL_ROOMS: HostelRoom[] = canonicalJson.hostelRooms as unknown as HostelRoom[];
+
+export const INITIAL_EXTERNAL_STAYS: ExternalStay[] = canonicalJson.externalStays as unknown as ExternalStay[];
+
+export const INITIAL_EXTERNAL_ROOMS = canonicalJson.externalRooms;
 
 export const INITIAL_PARTICIPANTS: Participant[] = canonicalJson.participants as unknown as Participant[];
 

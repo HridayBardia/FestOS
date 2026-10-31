@@ -12,7 +12,8 @@ import {
   Shirt,
   UtensilsCrossed,
   ClipboardList,
-  ShieldAlert
+  ShieldAlert,
+  Hotel
 } from 'lucide-react';
 import { useFest } from '@/context/FestContext';
 import { RoleKey, PERMISSION_MATRIX, ROLES } from '@/config/roles';
@@ -64,12 +65,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300',
       visible: isDirector || role === 'registration',
     },
-    {
+        {
       id: 'accommodation',
       label: 'Accommodation Grid',
-      subtitle: 'Hostels & external stays',
+      subtitle: 'Hostels B1-B3, G1-G2 (710 beds)',
       icon: Building2,
       badge: null,
+      visible: isDirector || role === 'hospitality',
+    },
+    {
+      id: 'external-stays',
+      label: 'External Accommodations',
+      subtitle: '6 off-campus stays · 740 beds',
+      icon: Hotel,
+      badge: 'Off-Campus',
+      badgeColor: 'bg-[#F6EFE6] text-[#A3703F] border border-[#E5DFD3]',
       visible: isDirector || role === 'hospitality',
     },
     {

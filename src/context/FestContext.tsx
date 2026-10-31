@@ -18,12 +18,15 @@ import {
   ClashAlert,
   ActionType,
   OperationalAlert,
-  StudentVolunteer
+  StudentVolunteer,
+  HostelRoom
 } from '../types/database';
 import {
   INITIAL_CONTINGENTS,
   INITIAL_HOSTELS,
   INITIAL_EXTERNAL_STAYS,
+  INITIAL_HOSTEL_ROOMS,
+  INITIAL_EXTERNAL_ROOMS,
   INITIAL_PARTICIPANTS,
   INITIAL_ALLOCATIONS,
   INITIAL_VENUES,
@@ -44,6 +47,8 @@ interface FestContextType {
   contingents: Contingent[];
   participants: Participant[];
   hostels: Hostel[];
+  hostelRooms: HostelRoom[];
+  externalRooms: any[];
   externalStays: ExternalStay[];
   allocations: AccommodationAllocation[];
   venues: Venue[];
@@ -127,6 +132,8 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [participants, setParticipants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
   const [hostels, setHostels] = useState<Hostel[]>(INITIAL_HOSTELS);
   const [externalStays, setExternalStays] = useState<ExternalStay[]>(INITIAL_EXTERNAL_STAYS);
+  const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>(INITIAL_HOSTEL_ROOMS);
+  const [externalRooms, setExternalRooms] = useState<any[]>(INITIAL_EXTERNAL_ROOMS);
   const [allocations, setAllocations] = useState<AccommodationAllocation[]>(INITIAL_ALLOCATIONS);
   const [venues, setVenues] = useState<Venue[]>(INITIAL_VENUES);
   const [events, setEvents] = useState<EventItem[]>(INITIAL_EVENTS);
@@ -971,34 +978,34 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Build tracking maps for campus rooms and external rooms
-    // Enforces: No boys and girls in the same room under ANY circumstance
-    const campusRoomsState = new Map<string, {
-      hostelId: string;
-      roomNumber: string;
-      floor: string;
-      gender: 'male' | 'female' | null;
-      bedA: { participantId: string; contingentId: string } | null;
-      bedB: { participantId: string; contingentId: string } | null;
-    }>();
+    // Enforces: 200 real rooms from hostels.csv, strict single-gender rooms, accessibility on ground floor
+    const bedLetters = ['A', 'B', 'C', 'D'];
 
-    // Initialize all rooms for operational campus hostels
-    hostels.forEach((h) => {
-      if (h.status === 'closed') return;
-      const floors = ['G', '1', '2', '3'].slice(0, h.floor_count + 1);
-      floors.forEach((f) => {
-        for (let i = 1; i <= 8; i++) {
-          const roomNumber = `${f}${i < 10 ? '0' + i : i}`;
-          const key = `${h.id}_${roomNumber}`;
-          const initialGender = h.gender_allowed === 'all' ? null : (h.gender_allowed as 'male' | 'female');
-          campusRoomsState.set(key, {
-            hostelId: h.id,
-            roomNumber,
-            floor: f,
-            gender: initialGender,
-            bedA: null,
-            bedB: null
-          });
-        }
+    interface RoomSlot {
+      hostelId: string;
+      roomId: string;
+      floor: number;
+      capacity: number;
+      gender: 'male' | 'female';
+      accessibility: boolean;
+      beds: ({ participantId: string; contingentId: string } | null)[];
+    }
+
+    const campusRoomsState = new Map<string, RoomSlot>();
+
+    hostelRooms.forEach((r) => {
+      const hostel = hostels.find((h) => h.id === r.block);
+      if (hostel && hostel.status === 'closed') return;
+      const key = `${r.block}_${r.room_id}`;
+      const rGender = ((r.gender as unknown as string) === 'boys' || r.gender === 'male') ? 'male' : 'female';
+      campusRoomsState.set(key, {
+        hostelId: r.block,
+        roomId: r.room_id,
+        floor: r.floor,
+        capacity: r.capacity,
+        gender: rGender,
+        accessibility: r.accessibility,
+        beds: new Array(r.capacity).fill(null)
       });
     });
 
@@ -1009,34 +1016,37 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const r = campusRoomsState.get(key);
       const p = participants.find((part) => part.id === alloc.participant_id);
       if (r && p) {
-        if (!r.gender) r.gender = (p.gender === 'female' ? 'female' : 'male');
-        if (alloc.bed_number === 'A') r.bedA = { participantId: p.id, contingentId: p.contingent_id };
-        else r.bedB = { participantId: p.id, contingentId: p.contingent_id };
+        const bedIdx = bedLetters.indexOf(alloc.bed_number);
+        if (bedIdx >= 0 && bedIdx < r.capacity) {
+          r.beds[bedIdx] = { participantId: p.id, contingentId: p.contingent_id };
+        }
       }
     });
 
-    // Initialize external rooms state (12 rooms per external stay)
-    const externalRoomsState = new Map<string, {
+    // Initialize external rooms state
+    interface ExtRoomSlot {
       stayId: string;
+      roomId: string;
       roomNumber: string;
+      capacity: number;
       gender: 'male' | 'female' | null;
-      bedA: { participantId: string; contingentId: string } | null;
-      bedB: { participantId: string; contingentId: string } | null;
-    }>();
+      beds: ({ participantId: string; contingentId: string } | null)[];
+    }
 
-    externalStays.forEach((s) => {
-      if (s.status === 'full') return;
-      for (let i = 101; i <= 112; i++) {
-        const roomNumber = String(i);
-        const key = `${s.id}_${roomNumber}`;
-        externalRoomsState.set(key, {
-          stayId: s.id,
-          roomNumber,
-          gender: null,
-          bedA: null,
-          bedB: null
-        });
-      }
+    const externalRoomsState = new Map<string, ExtRoomSlot>();
+
+    externalRooms.forEach((er) => {
+      const stay = externalStays.find((s) => s.id === er.property_id);
+      if (stay && stay.status === 'full') return;
+      const key = `${er.property_id}_${er.room_number}`;
+      externalRoomsState.set(key, {
+        stayId: er.property_id,
+        roomId: er.room_id,
+        roomNumber: er.room_number,
+        capacity: er.capacity,
+        gender: er.gender || null,
+        beds: new Array(er.capacity).fill(null)
+      });
     });
 
     // Populate existing external allocations
@@ -1047,12 +1057,13 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const p = participants.find((part) => part.id === alloc.participant_id);
       if (r && p) {
         if (!r.gender) r.gender = (p.gender === 'female' ? 'female' : 'male');
-        if (alloc.bed_number === 'A') r.bedA = { participantId: p.id, contingentId: p.contingent_id };
-        else r.bedB = { participantId: p.id, contingentId: p.contingent_id };
+        const bedIdx = bedLetters.indexOf(alloc.bed_number);
+        if (bedIdx >= 0 && bedIdx < r.capacity) {
+          r.beds[bedIdx] = { participantId: p.id, contingentId: p.contingent_id };
+        }
       }
     });
 
-    // Allocate sorted delegates with strict constraints
     const campusRoomsList = Array.from(campusRoomsState.values());
     const externalRoomsList = Array.from(externalRoomsState.values());
 
@@ -1062,31 +1073,25 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 1. Campus Allocation: Try matching same contingent cohort in an open bed of same gender
       for (const r of campusRoomsList) {
+        if (r.gender !== partGender) continue;
         const hostel = hostels.find((h) => h.id === r.hostelId);
         if (!hostel || hostel.status === 'closed') continue;
 
-        // Strict gender check: NEVER mix male and female in the same room
-        if (r.gender && r.gender !== partGender) continue;
-        if (hostel.gender_allowed !== 'all' && hostel.gender_allowed !== partGender) continue;
+        if (participant.accessibility_needs && !hostel.has_elevator && r.floor !== 0) continue;
 
-        // Accessibility requirement check
-        if (participant.accessibility_needs) {
-          if (!hostel.has_elevator && r.floor !== 'G') continue;
-        }
+        const hasCohortMate = r.beds.some((b) => b && b.contingentId === participant.contingent_id);
+        const freeBedIndex = r.beds.findIndex((b) => b === null);
 
-        const roommate = r.bedA || r.bedB;
-        const freeBed = !r.bedA ? 'A' : (!r.bedB ? 'B' : null);
-        if (roommate && freeBed && roommate.contingentId === participant.contingent_id) {
-          if (freeBed === 'A') r.bedA = { participantId: participant.id, contingentId: participant.contingent_id };
-          else r.bedB = { participantId: participant.id, contingentId: participant.contingent_id };
-          r.gender = partGender;
+        if (hasCohortMate && freeBedIndex !== -1) {
+          const bedLetter = bedLetters[freeBedIndex];
+          r.beds[freeBedIndex] = { participantId: participant.id, contingentId: participant.contingent_id };
 
           currentAllocations.push({
             id: `auto-alloc-${participant.id}`,
             participant_id: participant.id,
             hostel_id: r.hostelId,
-            room_number: r.roomNumber,
-            bed_number: freeBed,
+            room_number: r.roomId,
+            bed_number: bedLetter,
             status: 'confirmed',
             allocated_at: new Date().toISOString(),
             is_override: false
@@ -1097,33 +1102,28 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 2. Campus Allocation: Try empty room in matching gender hostel
+      // 2. Campus Allocation: Try any open bed in matching gender hostel (prioritizing ground floor for accessibility)
       if (!allocated) {
-        for (const r of campusRoomsList) {
+        // Sort rooms: if delegate has accessibility needs, floor 0 first
+        const eligibleRooms = participant.accessibility_needs
+          ? campusRoomsList.filter((r) => r.gender === partGender && r.floor === 0)
+          : campusRoomsList.filter((r) => r.gender === partGender);
+
+        for (const r of eligibleRooms) {
           const hostel = hostels.find((h) => h.id === r.hostelId);
           if (!hostel || hostel.status === 'closed') continue;
 
-          // Strict gender check
-          if (r.gender && r.gender !== partGender) continue;
-          if (hostel.gender_allowed !== 'all' && hostel.gender_allowed !== partGender) continue;
-
-          // Accessibility check
-          if (participant.accessibility_needs) {
-            if (!hostel.has_elevator && r.floor !== 'G') continue;
-          }
-
-          const freeBed = !r.bedA ? 'A' : (!r.bedB ? 'B' : null);
-          if (freeBed) {
-            if (freeBed === 'A') r.bedA = { participantId: participant.id, contingentId: participant.contingent_id };
-            else r.bedB = { participantId: participant.id, contingentId: participant.contingent_id };
-            r.gender = partGender;
+          const freeBedIndex = r.beds.findIndex((b) => b === null);
+          if (freeBedIndex !== -1) {
+            const bedLetter = bedLetters[freeBedIndex];
+            r.beds[freeBedIndex] = { participantId: participant.id, contingentId: participant.contingent_id };
 
             currentAllocations.push({
               id: `auto-alloc-${participant.id}`,
               participant_id: participant.id,
               hostel_id: r.hostelId,
-              room_number: r.roomNumber,
-              bed_number: freeBed,
+              room_number: r.roomId,
+              bed_number: bedLetter,
               status: 'confirmed',
               allocated_at: new Date().toISOString(),
               is_override: false
@@ -1135,20 +1135,21 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 3. Overflow to External Stays when campus hostels are filled
-      if (!allocated && externalStays.length > 0) {
-        // A. Same contingent in external stay
+      // 3. Overflow to External Stays when campus hostels are filled (strictly single-gender suites)
+      if (!allocated && externalRoomsList.length > 0) {
+        // A. Cohort matching in external stay
         for (const r of externalRoomsList) {
           const stay = externalStays.find((s) => s.id === r.stayId);
           if (!stay || stay.status === 'full') continue;
 
           if (r.gender && r.gender !== partGender) continue;
 
-          const roommate = r.bedA || r.bedB;
-          const freeBed = !r.bedA ? 'A' : (!r.bedB ? 'B' : null);
-          if (roommate && freeBed && roommate.contingentId === participant.contingent_id) {
-            if (freeBed === 'A') r.bedA = { participantId: participant.id, contingentId: participant.contingent_id };
-            else r.bedB = { participantId: participant.id, contingentId: participant.contingent_id };
+          const hasCohortMate = r.beds.some((b) => b && b.contingentId === participant.contingent_id);
+          const freeBedIndex = r.beds.findIndex((b) => b === null);
+
+          if (hasCohortMate && freeBedIndex !== -1) {
+            const bedLetter = bedLetters[freeBedIndex];
+            r.beds[freeBedIndex] = { participantId: participant.id, contingentId: participant.contingent_id };
             r.gender = partGender;
 
             currentAllocations.push({
@@ -1157,7 +1158,7 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
               hostel_id: null,
               external_stay_id: r.stayId,
               room_number: r.roomNumber,
-              bed_number: freeBed,
+              bed_number: bedLetter,
               status: 'confirmed',
               allocated_at: new Date().toISOString(),
               is_override: true,
@@ -1169,7 +1170,7 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        // B. Any available bed in external stay (strict single-gender room)
+        // B. Any available bed in external stay with matching or empty room gender
         if (!allocated) {
           for (const r of externalRoomsList) {
             const stay = externalStays.find((s) => s.id === r.stayId);
@@ -1177,10 +1178,10 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (r.gender && r.gender !== partGender) continue;
 
-            const freeBed = !r.bedA ? 'A' : (!r.bedB ? 'B' : null);
-            if (freeBed) {
-              if (freeBed === 'A') r.bedA = { participantId: participant.id, contingentId: participant.contingent_id };
-              else r.bedB = { participantId: participant.id, contingentId: participant.contingent_id };
+            const freeBedIndex = r.beds.findIndex((b) => b === null);
+            if (freeBedIndex !== -1) {
+              const bedLetter = bedLetters[freeBedIndex];
+              r.beds[freeBedIndex] = { participantId: participant.id, contingentId: participant.contingent_id };
               r.gender = partGender;
 
               currentAllocations.push({
@@ -1189,11 +1190,11 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 hostel_id: null,
                 external_stay_id: r.stayId,
                 room_number: r.roomNumber,
-                bed_number: freeBed,
+                bed_number: bedLetter,
                 status: 'confirmed',
                 allocated_at: new Date().toISOString(),
                 is_override: true,
-                override_reason: 'Campus capacity full. Auto-allocated to overflow stay.'
+                override_reason: 'Campus capacity full. Auto-allocated to verified external stay.'
               });
               allocated = true;
               allocatedCount++;
@@ -1233,7 +1234,7 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return { allocatedCount, violationsCount };
-  }, [allocations, participants, hostels, externalStays, contingents, broadcastStateUpdate]);
+  }, [allocations, participants, hostels, hostelRooms, externalRooms, externalStays, contingents, broadcastStateUpdate]);
 
 
   const broadcastOperationalAlert = useCallback((newAlertData: Omit<OperationalAlert, 'id' | 'alertCode' | 'timestamp' | 'status' | 'acknowledgedBy'>) => {
@@ -1338,6 +1339,8 @@ export const FestProvider: React.FC<{ children: React.ReactNode }> = ({ children
         contingents,
         participants,
         hostels,
+        hostelRooms,
+        externalRooms,
         externalStays,
         allocations,
         venues,
