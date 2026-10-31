@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { RoleKey, maskContact, maskName } from '@/config/roles';
 import { requireSession } from '@/lib/auth';
+import { CANONICAL_DATASET } from '@/lib/canonicalData';
 
 export const dynamic = 'force-dynamic';
 
@@ -1046,13 +1047,16 @@ function getWidgetFallbackData(widgetId: string): any {
       ];
 
     case 'vendor_capacity_tracker':
-      return [
-        { vendor_id: 'VND01', vendor_name: 'Annapurna Caterers', menu: 'North Indian Buffet', dietary_options: 'Veg/Jain', hygiene_certificate_expiry: '2026-12-31', hours: '07:00-23:00', capacity: 600, payment_terms: 'Milestone' },
-        { vendor_id: 'VND02', vendor_name: 'Malabar Coastal Spices', menu: 'South Indian & Coastal', dietary_options: 'Veg/Non-Veg', hygiene_certificate_expiry: '2026-11-15', hours: '07:00-22:00', capacity: 450, payment_terms: 'Advance' },
-        { vendor_id: 'VND03', vendor_name: 'Punjab Grill Express', menu: 'Tandoori & Bread Basket', dietary_options: 'Veg/Non-Veg', hygiene_certificate_expiry: '2026-12-15', hours: '12:00-23:00', capacity: 500, payment_terms: 'Milestone' },
-        { vendor_id: 'VND04', vendor_name: 'Deccan Dosa Hub', menu: 'South Indian Fast Breakfast', dietary_options: 'Pure Veg', hygiene_certificate_expiry: '2026-11-30', hours: '06:30-14:00', capacity: 450, payment_terms: 'Milestone' },
-        { vendor_id: 'VND05', vendor_name: 'Royal Rajputana Kitchen', menu: 'Traditional Thali', dietary_options: 'Pure Veg', hygiene_certificate_expiry: '2026-09-29', hours: '11:00-23:00', capacity: 400, payment_terms: 'Post-event' }
-      ];
+      return (CANONICAL_DATASET.vendors || []).map((v: any) => ({
+        vendor_id: v.vendor_id,
+        vendor_name: v.vendor_name,
+        menu: v.menu,
+        dietary_options: v.dietary_options,
+        hygiene_certificate_expiry: v.hygiene_certificate_expiry,
+        hours: v.hours,
+        capacity: parseInt(v.capacity, 10) || 150,
+        payment_terms: v.payment_terms
+      }));
 
     case 'meal_slot_monitor':
       return [

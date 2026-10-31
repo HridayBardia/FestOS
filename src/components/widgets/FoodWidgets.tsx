@@ -157,14 +157,14 @@ export const VendorCapacityTrackerWidget: React.FC<WidgetProps> = ({ role }) => 
 
   return (
     <WidgetCard widgetId="vendor_capacity_tracker" loading={loading} error={error} isEmpty={items.length === 0} emptyMessage="No caterers or food vendors configured.">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs max-h-[320px] overflow-y-auto pr-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs max-h-[460px] overflow-y-auto pr-1">
         {items.map((v) => {
           const isExpired = v.hygiene_certificate_expiry === '2026-09-29';
           const isNearExpiry = v.hygiene_certificate_expiry === '2026-10-31';
           return (
             <div
               key={v.vendor_id}
-              className={`p-3 rounded-lg border flex flex-col justify-between ${
+              className={`p-3.5 rounded-xl border flex flex-col justify-between gap-3 shadow-sm hover:border-[#D8D1C5] transition-all ${
                 isExpired
                   ? 'bg-red-50/40 border-red-300'
                   : isNearExpiry
@@ -172,32 +172,69 @@ export const VendorCapacityTrackerWidget: React.FC<WidgetProps> = ({ role }) => 
                   : 'bg-white border-[#E5DFD3]'
               }`}
             >
-              <div>
-                <div className="flex justify-between items-start">
+              <div className="space-y-2">
+                {/* Header: ID, Name, Expiry Status */}
+                <div className="flex justify-between items-start gap-2">
                   <div>
                     <span className="font-mono text-[10px] font-bold text-[#A3703F]">{v.vendor_id}</span>
-                    <p className="font-serif font-bold text-[#1A1A1A]">{v.vendor_name}</p>
+                    <p className="font-serif font-bold text-sm text-[#1A1A1A] leading-tight">{v.vendor_name}</p>
                   </div>
                   {isExpired ? (
-                    <span className="text-[9px] font-bold uppercase font-mono px-1.5 py-0.5 rounded bg-red-100 text-red-800 border border-red-300">
+                    <span className="text-[9px] font-bold uppercase font-mono px-1.5 py-0.5 rounded bg-red-100 text-red-800 border border-red-300 shrink-0">
                       EXPIRED
                     </span>
                   ) : isNearExpiry ? (
-                    <span className="text-[9px] font-bold uppercase font-mono px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                    <span className="text-[9px] font-bold uppercase font-mono px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
                       EXP 31-OCT
                     </span>
                   ) : (
-                    <span className="text-[9px] font-bold uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <span className="text-[9px] font-bold uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
                       Valid
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-[#6B655E] mt-1.5 line-clamp-1">{v.menu}</p>
+
+                {/* Cuisine / Menu */}
+                <p className="text-xs text-[#1A1A1A] font-medium">{v.menu}</p>
+
+                {/* Canonical Dietary Options from Database */}
+                <div className="pt-0.5">
+                  <span className="text-[10px] font-mono text-[#8F8982] uppercase font-bold tracking-wider block mb-1">
+                    Dietary Options
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(v.dietary_options || 'standard').split(';').map((diet: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#FAF8F5] border border-[#E5DFD3] text-[#4A4540] capitalize"
+                      >
+                        {diet.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Canonical Payment Terms from Database */}
+                <div className="pt-0.5">
+                  <div className="flex items-center justify-between text-[11px] font-mono bg-[#FAF8F5] px-2.5 py-1.5 rounded-lg border border-[#EFEBE3]">
+                    <span className="text-[#8F8982] uppercase font-bold text-[10px]">Payment Terms:</span>
+                    <span className="font-bold text-[#A3703F] capitalize text-right">{v.payment_terms || 'Standard'}</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-3 pt-1.5 border-t border-[#EFEBE3] text-[10px] font-mono text-[#6B655E] flex justify-between">
-                <span>Cap: {v.capacity ?? 150} covers</span>
-                <span>Expiry: {v.hygiene_certificate_expiry || 'N/A'}</span>
+              {/* Footer: Capacity, Expiry & Hours */}
+              <div className="pt-2 border-t border-[#EFEBE3] text-[10px] font-mono text-[#6B655E] flex flex-col gap-1">
+                <div className="flex justify-between items-center">
+                  <span>Cap: <strong className="text-[#1A1A1A]">{v.capacity ?? 150}</strong> covers</span>
+                  <span>Expiry: <strong className="text-[#1A1A1A]">{v.hygiene_certificate_expiry || 'N/A'}</strong></span>
+                </div>
+                {v.hours && (
+                  <div className="flex justify-between items-center text-[#8F8982]">
+                    <span>Operating Hours:</span>
+                    <span className="text-[#4A4540] font-medium">{v.hours}</span>
+                  </div>
+                )}
               </div>
             </div>
           );
