@@ -51,7 +51,7 @@ export const WidgetCard: React.FC<WidgetCardProps> = ({
 
   return (
     <div
-      className={`bg-white border border-[#E5DFD3] rounded-xl p-5 shadow-luxury flex flex-col justify-between transition-all duration-200 hover:shadow-luxuryHover ${spanClass} ${className}`}
+      className={`bg-white border border-[#E5DFD3] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-luxury flex flex-col justify-between transition-all duration-200 hover:shadow-luxuryHover ${spanClass} ${className}`}
     >
       {/* Widget Header */}
       <div className="flex items-start justify-between gap-3 border-b border-[#EFEBE3] pb-3 mb-4">

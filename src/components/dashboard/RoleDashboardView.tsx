@@ -30,14 +30,14 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({ currentRol
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Role Masthead Banner */}
-      <div className="bg-white border border-[#E5DFD3] rounded-2xl p-6 sm:p-7 shadow-luxury relative overflow-hidden">
+      <div className="bg-white border border-[#E5DFD3] rounded-2xl p-4 sm:p-7 shadow-luxury relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-[#F6EFE6]/60 to-transparent rounded-full -mr-20 -mt-20 pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
           <div>
-            <div className="flex flex-wrap items-center gap-2.5 mb-2">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mb-1.5 sm:mb-2">
               <span
                 className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${roleDef.badgeColor}`}
               >
@@ -49,10 +49,10 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({ currentRol
               <span className="text-xs text-[#8F8982] font-mono">| {roleDef.department}</span>
             </div>
 
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#1A1A1A] tracking-tight">
+            <h2 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight">
               {roleDef.name} Control Portal
             </h2>
-            <p className="text-sm text-[#6B655E] mt-1 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#6B655E] mt-1 max-w-2xl leading-relaxed">
               {roleDef.description}
             </p>
           </div>
@@ -71,17 +71,17 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({ currentRol
         </div>
       </div>
 
-        {/* Stable Widget Grid Layout - No automatic DOM teardown/remount */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          {widgetIds.map((wId) => (
-            <WidgetRegistry
-              key={`${wId}-${refreshKey}`}
-              widgetId={wId}
-              role={currentRole}
-              onRefreshTrigger={triggerRefresh}
-            />
-          ))}
-        </div>
+      {/* Stable Widget Grid Layout - Full responsiveness from mobile 1-column to desktop multi-column */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+        {widgetIds.map((wId) => (
+          <WidgetRegistry
+            key={`${wId}-${refreshKey}`}
+            widgetId={wId}
+            role={currentRole}
+            onRefreshTrigger={triggerRefresh}
+          />
+        ))}
       </div>
-      );
+    </div>
+  );
 };

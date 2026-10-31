@@ -110,10 +110,10 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white border border-[#E5DFD3] rounded-2xl max-w-5xl w-full max-h-[85vh] flex flex-col shadow-2xl text-[#1A1A1A]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white border border-[#E5DFD3] rounded-2xl max-w-5xl w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col shadow-2xl text-[#1A1A1A]">
         {/* Header */}
-        <div className="p-5 border-b border-[#E5DFD3] flex items-center justify-between">
+        <div className="p-3.5 sm:p-5 border-b border-[#E5DFD3] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#F6EFE6] text-[#A3703F] border border-[#E5DFD3]">
               <FileSpreadsheet className="w-5 h-5" />
@@ -177,8 +177,9 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
         </div>
 
         {/* Table Body */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <table className="w-full text-left text-xs text-[#1A1A1A]">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-4">
+          <div className="overflow-x-auto min-w-full">
+            <table className="w-full text-left text-xs text-[#1A1A1A] min-w-[640px]">
             <thead className="bg-[#FAF8F5] text-[11px] font-bold uppercase tracking-wider text-[#8F8982] sticky top-0 border-b border-[#E5DFD3]">
               <tr>
                 <th className="py-2.5 px-3">Time</th>
@@ -213,7 +214,8 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </div>
     </div>

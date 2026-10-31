@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  Menu,
   Clock,
   ShieldAlert,
   FileSpreadsheet,
@@ -23,6 +24,7 @@ import { useFest } from '@/context/FestContext';
 import { RoleKey, ROLES } from '@/config/roles';
 
 export interface HeaderProps {
+  onToggleMobileMenu?: () => void;
   onOpenDisruptions?: () => void;
   onOpenAuditLogs: () => void;
   onOpenConnectModal?: () => void;
@@ -33,6 +35,7 @@ export interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  onToggleMobileMenu,
   onOpenDisruptions,
   onOpenAuditLogs,
   onOpenConnectModal,
@@ -209,7 +212,17 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 min-h-[62px] w-full max-w-full">
         
         {/* SECTION 1: Brand & Department Title (Always locked to left) */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {onToggleMobileMenu && (
+            <button
+              onClick={onToggleMobileMenu}
+              className="lg:hidden p-2 -ml-1 rounded-xl bg-white hover:bg-[#F6EFE6] text-[#A3703F] border border-[#E5DFD3] transition-colors shadow-card shrink-0 flex items-center justify-center min-w-[38px] min-h-[38px]"
+              title="Open Navigation Menu"
+              aria-label="Open Navigation"
+            >
+              <Menu className="w-4 h-4 text-[#A3703F]" />
+            </button>
+          )}
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-serif text-base sm:text-lg font-bold text-[#1A1A1A] whitespace-nowrap">
@@ -362,7 +375,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Dropdown Menu Popover */}
             {isUserMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#E5DFD3] rounded-2xl shadow-2xl p-3 z-50 text-[#1A1A1A] animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-1.5rem)] bg-white border border-[#E5DFD3] rounded-2xl shadow-2xl p-3 z-50 text-[#1A1A1A] animate-in fade-in zoom-in-95 duration-150">
                 {/* User Identity Card */}
                 <div className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#E5DFD3] mb-2.5">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#A3703F] to-[#7A4E1D] text-white flex items-center justify-center font-bold text-base uppercase shadow-sm shrink-0">

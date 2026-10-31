@@ -226,7 +226,7 @@ export const VenueHeadcountReportWidget: React.FC<WidgetProps> = ({ role, onRefr
   return (
     <WidgetCard widgetId="venue_headcount_report">
       <form onSubmit={handleSubmit} className="space-y-3 text-xs">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label className="block text-[10px] font-bold uppercase text-[#8F8982] mb-1">Target Venue</label>
             <select
@@ -324,7 +324,7 @@ export const ReportIncidentWidget: React.FC<WidgetProps> = ({ role, onRefreshTri
   return (
     <WidgetCard widgetId="report_incident">
       <form onSubmit={handleSubmit} className="space-y-3 text-xs">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label className="block text-[10px] font-bold uppercase text-[#8F8982] mb-1">Incident Venue</label>
             <select

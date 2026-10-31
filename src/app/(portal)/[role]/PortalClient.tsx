@@ -26,6 +26,7 @@ interface PortalClientProps {
 export const PortalClient: React.FC<PortalClientProps> = ({ session }) => {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   const role = session.role;
   const isDirector = role === 'director';
@@ -41,27 +42,31 @@ export const PortalClient: React.FC<PortalClientProps> = ({ session }) => {
     if (tab === 'disruptions' && !isDirector) return;
 
     setCurrentTab(tab);
+    setIsMobileSidebarOpen(false);
   };
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#FAF8F5] text-[#1A1A1A]">
-      {/* Role-Gated Sidebar */}
+      {/* Role-Gated Sidebar with Responsive Mobile Off-Canvas Drawer */}
       <Sidebar
         currentTab={currentTab}
         setCurrentTab={handleTabChange}
         role={session.role}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main View Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Personalized Session Header */}
+        {/* Personalized Session Header with Mobile Hamburger Toggle */}
         <Header
           memberId={session.memberId}
           name={session.name}
           role={session.role}
           shift={session.shift}
+          onToggleMobileMenu={() => setIsMobileSidebarOpen((prev) => !prev)}
           onOpenAuditLogs={() => setIsAuditModalOpen(true)}
-          onOpenDisruptions={() => isDirector && setCurrentTab('disruptions')}
+          onOpenDisruptions={() => isDirector && handleTabChange('disruptions')}
         />
 
         {/* Operational Incident Alert Command System across all 8 dashboards */}
@@ -71,8 +76,8 @@ export const PortalClient: React.FC<PortalClientProps> = ({ session }) => {
         />
 
         {/* Viewport Content */}
-        <main className="flex-1 overflow-y-auto p-6 sm:p-8 bg-[#FAF8F5]">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 bg-[#FAF8F5]">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
             {currentTab === 'dashboard' && (
               <RoleDashboardView currentRole={session.role} />
             )}
