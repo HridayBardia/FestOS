@@ -156,13 +156,34 @@ export interface Vendor {
 
 export interface InventoryLogistics {
   id: string;
+  item_id?: string;
   item_name: string;
-  category: 'av_equipment' | 'furniture' | 'barricades' | 'power_generators' | 'canopy';
+  item?: string;
+  category: string;
   total_quantity: number;
+  quantity?: number;
   in_use_quantity: number;
   available_quantity: number;
   location: string;
-  condition: 'optimal' | 'needs_repair' | 'damaged';
+  condition: string;
+}
+
+export interface EquipmentDamageLog {
+  id: string;
+  itemId: string;
+  itemName: string;
+  quantityAffected: number;
+  depotLocation: string;
+  severity: 'critical' | 'high' | 'medium';
+  reportedCondition: 'under repair' | 'needs check' | 'damaged' | 'decommissioned';
+  defectDescription: string;
+  loggedBy: string;
+  loggedRole: string;
+  timestamp: string;
+  alertCode?: string;
+  repairStatus: 'investigating' | 'under_repair' | 'parts_ordered' | 'repaired';
+  resolvedAt?: string;
+  resolutionNotes?: string;
 }
 
 export interface InventoryMerch {
